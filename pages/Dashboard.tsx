@@ -524,8 +524,8 @@ const Dashboard: React.FC = () => {
 
       
       <aside className={`fixed inset-y-0 left-0 z-40 w-64 bg-surface border-r border-border transform transition-transform duration-300 md:relative md:transform-none flex flex-col ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="p-6 border-b border-border flex items-center justify-center gap-2 font-bold text-xl">
-          <span className="bg-gradient-to-r from-purple-500 to-indigo-600 text-white px-2 py-0.5 rounded text-sm font-extrabold uppercase tracking-tight shadow-[0_0_15px_rgba(139,92,246,0.4)]">MXA</span>
+        <div className="p-6 border-b border-border flex items-center justify-center gap-2 font-bold text-lg">
+          <span className="bg-gradient-to-r from-purple-500 to-indigo-600 text-white px-2 py-0.5 rounded text-xs font-extrabold uppercase tracking-tight shadow-[0_0_15px_rgba(139,92,246,0.4)]">Misan X Auth</span>
           <span className="text-muted tracking-tight">Dashboard</span>
         </div>
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
