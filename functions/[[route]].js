@@ -508,4 +508,8 @@ app.post('/delete_license', async (c) => {
     } catch (error) { return c.json(sendResponse(false, 'Server error'), 500); }
 });
 
+app.get('*', async (c) => {
+    return await c.env.ASSETS.fetch(c.req.raw);
+});
+
 export const onRequest = handle(app);
