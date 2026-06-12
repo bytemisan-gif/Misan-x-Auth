@@ -12,5 +12,6 @@ export const FIREBASE_CONFIG = {
 };
 
 export const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL || "bytemisan@gmail.com";
-export const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || "";
+const rawSiteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY;
+export const TURNSTILE_SITE_KEY = rawSiteKey && rawSiteKey !== "your_turnstile_site_key_here" ? rawSiteKey : "1x00000000000000000000AA";
 export const TURNSTILE_SECRET_KEY = import.meta.env.VITE_TURNSTILE_SECRET_KEY || "";
