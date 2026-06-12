@@ -1,5 +1,5 @@
 
-export const DB_SECRET = import.meta.env.VITE_DB_SECRET || "";
+export const DB_SECRET = import.meta.env.VITE_DB_SECRET || "your_db_secret_here";
 
 export const FIREBASE_CONFIG = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "",

@@ -6,7 +6,7 @@ import {
   Users, BarChart2, Box, LogOut, Trash2, Edit2,
   Plus, Coins, ShieldCheck, Mail, ArrowLeft, Loader2,
   Search, X, Key, Info, AlertTriangle, Crown, Settings,
-  ArrowUp, ArrowDown, Hammer, GripVertical, Code
+  ArrowUp, ArrowDown, Hammer, GripVertical, Code, UserPlus
 } from 'lucide-react';
 import { auth, db } from '../services/firebase';
 import { encrypt, decrypt } from '../services/encryption';
@@ -41,6 +41,7 @@ const Admin: React.FC = () => {
   const [showGiveCredits, setShowGiveCredits] = useState<string | null>(null); 
   const [showCreatePlan, setShowCreatePlan] = useState(false);
   const [showEditPlan, setShowEditPlan] = useState<string | null>(null); 
+  const [showAddCustomer, setShowAddCustomer] = useState(false);
   const [confirmModal, setConfirmModal] = useState<{
     show: boolean, title: string, message: string, onConfirm: () => void, danger?: boolean
   }>({ show: false, title: '', message: '', onConfirm: () => { } });
@@ -82,6 +83,21 @@ const Admin: React.FC = () => {
         const free = { maxApps: 2, maxUsers: 50, onSale: true, creditPrice: 0, price: 'Free', order: 0 };
         set(ref(db, 'system/plans/Free Plan'), encrypt(free));
         dec['Free Plan'] = free;
+      }
+      if (!dec['Silver Plan']) {
+        const silver = { maxApps: 5, maxUsers: 500, onSale: true, creditPrice: 500, price: '$5/mo', order: 1 };
+        set(ref(db, 'system/plans/Silver Plan'), encrypt(silver));
+        dec['Silver Plan'] = silver;
+      }
+      if (!dec['Gold Plan']) {
+        const gold = { maxApps: 15, maxUsers: 2000, onSale: true, creditPrice: 1500, price: '$15/mo', order: 2 };
+        set(ref(db, 'system/plans/Gold Plan'), encrypt(gold));
+        dec['Gold Plan'] = gold;
+      }
+      if (!dec['Platinum Plan']) {
+        const platinum = { maxApps: 50, maxUsers: 10000, onSale: true, creditPrice: 3000, price: '$30/mo', order: 3 };
+        set(ref(db, 'system/plans/Platinum Plan'), encrypt(platinum));
+        dec['Platinum Plan'] = platinum;
       }
 
       setPlans(dec);
@@ -195,12 +211,20 @@ const Admin: React.FC = () => {
                   className="w-full bg-surface border border-white/5 rounded-2xl py-3.5 pl-12 pr-4 text-sm focus:outline-none focus:border-white/20 transition-all placeholder:text-muted/50"
                 />
               </div>
-              <button
-                onClick={() => setShowGiveCredits('')}
-                className="bg-white text-black px-6 py-3 rounded-2xl text-xs font-black uppercase tracking-widest flex items-center gap-2 hover:scale-105 transition-all shadow-xl"
-              >
-                <Coins size={14} /> Add Credits
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowAddCustomer(true)}
+                  className="bg-white/10 text-white border border-white/10 px-6 py-3 rounded-2xl text-xs font-black uppercase tracking-widest flex items-center gap-2 hover:scale-105 transition-all shadow-xl hover:bg-white/15"
+                >
+                  <UserPlus size={14} /> Add Customer
+                </button>
+                <button
+                  onClick={() => setShowGiveCredits('')}
+                  className="bg-white text-black px-6 py-3 rounded-2xl text-xs font-black uppercase tracking-widest flex items-center gap-2 hover:scale-105 transition-all shadow-xl"
+                >
+                  <Coins size={14} /> Add Credits
+                </button>
+              </div>
             </div>
 
             <div className="bg-surface border border-white/5 rounded-[2rem] overflow-hidden shadow-2xl">
@@ -650,20 +674,25 @@ const Admin: React.FC = () => {
           <Modal title="New System Plan" onClose={() => setShowCreatePlan(false)}>
             <form onSubmit={async (e) => {
               e.preventDefault();
-              const d = new FormData(e.currentTarget);
-              const name = d.get('name') as string;
-              if (!name) return;
-              const p: SystemPlan = {
-                maxApps: parseInt(d.get('maxApps') as string),
-                maxUsers: parseInt(d.get('maxUsers') as string),
-                onSale: (d.get('onSale') === 'on'),
-                creditPrice: parseInt(d.get('creditPrice') as string),
-                price: 'Credit Only',
-                order: Object.keys(plans).length
-              };
-              await set(ref(db, `system/plans/${name}`), encrypt(p));
-              setShowCreatePlan(false);
-              addToast('Plan Created');
+              try {
+                const d = new FormData(e.currentTarget);
+                const name = d.get('name') as string;
+                if (!name) return;
+                const p: SystemPlan = {
+                  maxApps: parseInt(d.get('maxApps') as string),
+                  maxUsers: parseInt(d.get('maxUsers') as string),
+                  onSale: (d.get('onSale') === 'on'),
+                  creditPrice: parseInt(d.get('creditPrice') as string),
+                  price: 'Credit Only',
+                  order: Object.keys(plans).length
+                };
+                await set(ref(db, `system/plans/${name}`), encrypt(p));
+                setShowCreatePlan(false);
+                addToast('Plan Created');
+              } catch (err: any) {
+                console.error("Failed to create plan:", err);
+                addToast(`Error: ${err.message || err}`, 'error');
+              }
             }} className="space-y-4">
               <input name="name" placeholder="Plan Name (e.g. Gold)" className="w-full bg-surfaceHighlight border border-border p-4 rounded-xl focus:outline-none" required />
               <div className="grid grid-cols-2 gap-4">
@@ -690,6 +719,64 @@ const Admin: React.FC = () => {
         )
       }
 
+      {
+        showAddCustomer && (
+          <Modal title="Add Customer" onClose={() => setShowAddCustomer(false)}>
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              try {
+                const d = new FormData(e.currentTarget);
+                const email = (d.get('email') as string || '').trim().toLowerCase();
+                const plan = d.get('plan') as string;
+                const credits = parseInt(d.get('credits') as string || '0');
+                if (!email) return;
+
+                const emailKey = email.replace(/\./g, ',');
+                const snap = await get(ref(db, `customers/${emailKey}`));
+                if (snap.exists()) {
+                  return addToast('Customer email already exists', 'error');
+                }
+
+                const secret = 'MXA-' + Math.random().toString(36).substring(2, 15).toUpperCase();
+                const newCustomer = {
+                  email,
+                  secret,
+                  plan,
+                  credits,
+                  discordId: '',
+                  createdAt: new Date().toISOString()
+                };
+
+                await set(ref(db, `customers/${emailKey}`), encrypt(newCustomer));
+                setShowAddCustomer(false);
+                addToast('Customer added successfully');
+              } catch (err: any) {
+                console.error("Failed to add customer:", err);
+                addToast(`Error: ${err.message || err}`, 'error');
+              }
+            }} className="space-y-4">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-muted uppercase ml-1">Customer Email</label>
+                <input name="email" type="email" placeholder="customer@gmail.com" className="w-full bg-surfaceHighlight border border-border p-4 rounded-xl focus:outline-none" required />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-muted uppercase ml-1">Plan</label>
+                <select name="plan" defaultValue="Free Plan" className="w-full bg-surfaceHighlight border border-border p-4 rounded-xl focus:outline-none text-white">
+                  {Object.keys(plans).map(pName => (
+                    <option key={pName} value={pName} className="bg-surface">{pName}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-muted uppercase ml-1">Initial Credits</label>
+                <input name="credits" type="number" defaultValue="0" className="w-full bg-surfaceHighlight border border-border p-4 rounded-xl focus:outline-none" />
+              </div>
+              <button type="submit" className="w-full bg-white text-black font-bold py-4 rounded-xl uppercase tracking-widest text-xs">Add Customer</button>
+            </form>
+          </Modal>
+        )
+      }
+
 
 
 
@@ -699,22 +786,27 @@ const Admin: React.FC = () => {
           <Modal title={`Configure ${showEditPlan}`} onClose={() => setShowEditPlan(null)}>
             <form onSubmit={async (e) => {
               e.preventDefault();
-              const d = new FormData(e.currentTarget);
-              const feats = document.querySelectorAll('input[name="feature"]:checked');
-              const selectedFeatures = Array.from(feats).map(f => (f as HTMLInputElement).value);
+              try {
+                const d = new FormData(e.currentTarget);
+                const feats = document.querySelectorAll('input[name="feature"]:checked');
+                const selectedFeatures = Array.from(feats).map(f => (f as HTMLInputElement).value);
 
-              const p: SystemPlan = {
-                maxApps: parseInt(d.get('maxApps') as string),
-                maxUsers: parseInt(d.get('maxUsers') as string),
-                onSale: (d.get('onSale') === 'on'),
-                creditPrice: parseInt(d.get('creditPrice') as string),
-                price: plans[showEditPlan].price,
-                order: plans[showEditPlan].order || 0,
-                features: selectedFeatures
-              };
-              await set(ref(db, `system/plans/${showEditPlan}`), encrypt(p));
-              setShowEditPlan(null);
-              addToast('Plan updated');
+                const p: SystemPlan = {
+                  maxApps: parseInt(d.get('maxApps') as string),
+                  maxUsers: parseInt(d.get('maxUsers') as string),
+                  onSale: (d.get('onSale') === 'on'),
+                  creditPrice: parseInt(d.get('creditPrice') as string),
+                  price: plans[showEditPlan].price,
+                  order: plans[showEditPlan].order || 0,
+                  features: selectedFeatures
+                };
+                await set(ref(db, `system/plans/${showEditPlan}`), encrypt(p));
+                setShowEditPlan(null);
+                addToast('Plan updated');
+              } catch (err: any) {
+                console.error("Failed to update plan:", err);
+                addToast(`Error: ${err.message || err}`, 'error');
+              }
             }} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
