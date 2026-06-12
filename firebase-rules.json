@@ -11,24 +11,28 @@
     },
 
     "applications": {
+      ".read": "auth != null && auth.token.email === 'bytemisan@gmail.com'",
+      ".write": "auth != null && auth.token.email === 'bytemisan@gmail.com'",
       "$secret": {
-        ".read": "auth != null && root.child('customers').child(auth.token.email.replace('.', ',')).child('secret').val() === $secret",
-        ".write": "auth != null && root.child('customers').child(auth.token.email.replace('.', ',')).child('secret').val() === $secret"
+        ".read": "auth != null",
+        ".write": "auth != null"
       }
     },
 
     "webhookSettings": {
+      ".read": "auth != null && auth.token.email === 'bytemisan@gmail.com'",
+      ".write": "auth != null && auth.token.email === 'bytemisan@gmail.com'",
       "$secret": {
-        ".read": "auth != null && auth.token.email === 'bytemisan@gmail.com'",
-        ".write": "auth != null && auth.token.email === 'bytemisan@gmail.com'"
+        ".read": "auth != null",
+        ".write": "auth != null"
       }
     },
 
     "customers": {
       ".read": "auth != null && auth.token.email === 'bytemisan@gmail.com'",
       "$emailKey": {
-        ".read": "auth != null && auth.token.email.replace('.', ',') === $emailKey",
-        ".write": "auth != null && (auth.token.email.replace('.', ',') === $emailKey || auth.token.email === 'bytemisan@gmail.com')"
+        ".read": "auth != null && (data.child('email').val() === auth.token.email || auth.token.email === 'bytemisan@gmail.com')",
+        ".write": "auth != null && (data.child('email').val() === auth.token.email || newData.child('email').val() === auth.token.email || auth.token.email === 'bytemisan@gmail.com')"
       }
     },
 

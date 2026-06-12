@@ -440,7 +440,10 @@ const Dashboard: React.FC = () => {
         fields: [{ name: 'Name', value: name, inline: true }]
       });
       addToast('Application Created');
-    } catch (err) { addToast('Failed to create.', 'error'); }
+    } catch (err: any) {
+      console.error("Failed to create application:", err);
+      addToast(`Failed to create application: ${err.message || err}`, 'error');
+    }
     setLoading(false);
   };
 
