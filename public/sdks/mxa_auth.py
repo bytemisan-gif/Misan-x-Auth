@@ -14,19 +14,40 @@ class MxaAuth:
         self.subscription = None
         self.expiry = None
 
+    def _rc4(self, key: str, data: str) -> str:
+        s = list(range(256))
+        j = 0
+        res = []
+        for i in range(256):
+            j = (j + s[i] + ord(key[i % len(key)])) % 256
+            s[i], s[j] = s[j], s[i]
+        i = 0
+        j = 0
+        for char in data:
+            i = (i + 1) % 256
+            j = (j + s[i]) % 256
+            s[i], s[j] = s[j], s[i]
+            res.append(chr(ord(char) ^ s[(s[i] + s[j]) % 256]))
+        return "".join(res)
+
+    def _encrypt(self, data: str, key: str) -> str:
+        cipher = self._rc4(key, data)
+        return "".join(f"{ord(c):02x}" for c in cipher)
+
+    def _decrypt(self, hex_data: str, key: str) -> str:
+        data = "".join(chr(int(hex_data[i:i+2], 16)) for i in range(0, len(hex_data), 2))
+        return self._rc4(key, data)
+
     def _get_hwid(self) -> str:
         try:
             if platform.system() == "Windows":
-                # Get Windows UUID
                 cmd = "wmic csproduct get uuid"
                 uuid = subprocess.check_output(cmd, shell=True).decode().split('\n')[1].strip()
                 return uuid
             elif platform.system() == "Linux":
-                # Get machine-id
                 with open("/etc/machine-id", "r") as f:
                     return f.read().strip()
             elif platform.system() == "Darwin":
-                # Get macOS UUID
                 cmd = "ioreg -rd1 -c IOPlatformExpertDevice | grep -i UUID"
                 uuid = subprocess.check_output(cmd, shell=True).decode().split('"')[-2]
                 return uuid
@@ -37,16 +58,36 @@ class MxaAuth:
     def _post(self, path: str, data: dict) -> dict:
         url = f"{self.base_url}{path}"
         headers = {"Content-Type": "application/json"}
-        req_data = json.dumps(data).encode("utf-8")
+        
+        # Encrypt request payload
+        plain_json = json.dumps(data)
+        encrypted_payload = self._encrypt(plain_json, self.secret)
+        
+        wrapped_data = {
+            "secret": self.secret,
+            "payload": encrypted_payload
+        }
+        
+        req_data = json.dumps(wrapped_data).encode("utf-8")
         req = urllib.request.Request(url, data=req_data, headers=headers, method="POST")
         try:
             with urllib.request.urlopen(req) as response:
                 res_body = response.read().decode("utf-8")
-                return json.loads(res_body)
+                res_json = json.loads(res_body)
+                
+                # Decrypt response payload
+                if "payload" in res_json:
+                    decrypted_str = self._decrypt(res_json["payload"], self.secret)
+                    return json.loads(decrypted_str)
+                return res_json
         except urllib.error.HTTPError as e:
             try:
                 res_body = e.read().decode("utf-8")
-                return json.loads(res_body)
+                res_json = json.loads(res_body)
+                if "payload" in res_json:
+                    decrypted_str = self._decrypt(res_json["payload"], self.secret)
+                    return json.loads(decrypted_str)
+                return res_json
             except Exception:
                 return {"success": False, "message": f"HTTP_ERROR_{e.code}"}
         except Exception as e:

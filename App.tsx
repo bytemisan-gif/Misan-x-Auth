@@ -46,6 +46,15 @@ const App: React.FC = () => {
   const [maintenance, setMaintenance] = useState<SystemConfig | null>(null);
 
   useEffect(() => {
+    if (!sessionStorage.getItem('mxa_session_init')) {
+      Object.keys(localStorage).forEach((key) => {
+        if (key.startsWith('firebase:AuthEvent:') || key.startsWith('firebase:authUser:')) {
+          localStorage.removeItem(key);
+        }
+      });
+      sessionStorage.setItem('mxa_session_init', 'true');
+    }
+
     const unsubscribeAuth = onAuthStateChanged(auth, (u) => {
       if (u?.email === 'reseller@gmail.com') {
         setUser(null);

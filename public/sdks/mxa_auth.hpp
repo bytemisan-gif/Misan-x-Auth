@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <sstream>
+#include <iomanip>
 #include <windows.h>
 #include <wininet.h>
 
@@ -11,11 +12,50 @@ private:
     std::string secret;
     std::string appName;
     std::string appVersion;
-    std::string baseUrl = "misanxauth.qzz.io"; // Host name
+    std::string baseUrl = "misanxauth.qzz.io";
 
     std::string username;
     std::string subscription;
     std::string expiry;
+
+    std::string rc4(const std::string& key, const std::string& data) {
+        unsigned char s[256];
+        for (int i = 0; i < 256; i++) s[i] = i;
+        int j = 0;
+        for (int i = 0; i < 256; i++) {
+            j = (j + s[i] + (unsigned char)key[i % key.length()]) % 256;
+            std::swap(s[i], s[j]);
+        }
+        int i = 0;
+        j = 0;
+        std::string res = "";
+        for (size_t y = 0; y < data.length(); y++) {
+            i = (i + 1) % 256;
+            j = (j + s[i]) % 256;
+            std::swap(s[i], s[j]);
+            res += (char)(data[y] ^ s[(s[i] + s[j]) % 256]);
+        }
+        return res;
+    }
+
+    std::string rc4EncryptHex(const std::string& str, const std::string& key) {
+        std::string cipher = rc4(key, str);
+        std::stringstream ss;
+        for (size_t i = 0; i < cipher.length(); i++) {
+            ss << std::hex << std::setw(2) << std::setfill('0') << (int)(unsigned char)cipher[i];
+        }
+        return ss.str();
+    }
+
+    std::string rc4DecryptHex(const std::string& hex, const std::string& key) {
+        std::string str = "";
+        for (size_t i = 0; i < hex.length(); i += 2) {
+            std::string byteString = hex.substr(i, 2);
+            char byte = (char)strtol(byteString.c_str(), NULL, 16);
+            str += byte;
+        }
+        return rc4(key, str);
+    }
 
     std::string getHwid() {
         HW_PROFILE_INFO hwProfileInfo;
@@ -25,7 +65,6 @@ private:
         return "UNKNOWN-C++-HWID";
     }
 
-    // Helper to find a JSON field's value in a flat JSON string
     std::string findJsonField(const std::string& json, const std::string& field) {
         size_t pos = json.find("\"" + field + "\"");
         if (pos == std::string::npos) return "";
@@ -49,6 +88,11 @@ private:
     }
 
     std::string httpPost(const std::string& path, const std::string& jsonPayload) {
+        std::string encryptedPayload = rc4EncryptHex(jsonPayload, secret);
+        std::stringstream requestBody;
+        requestBody << "{\"secret\":\"" << secret << "\",\"payload\":\"" << encryptedPayload << "\"}";
+        std::string requestStr = requestBody.str();
+
         std::string response = "";
         HINTERNET hSession = InternetOpenA("MXA-Auth-SDK", INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
         if (hSession) {
@@ -58,7 +102,7 @@ private:
                 HINTERNET hRequest = HttpOpenRequestA(hConnect, "POST", path.c_str(), NULL, NULL, acceptTypes, INTERNET_FLAG_SECURE | INTERNET_FLAG_RELOAD, 1);
                 if (hRequest) {
                     std::string headers = "Content-Type: application/json\r\n";
-                    BOOL sent = HttpSendRequestA(hRequest, headers.c_str(), (DWORD)headers.length(), (LPVOID)jsonPayload.c_str(), (DWORD)jsonPayload.length());
+                    BOOL sent = HttpSendRequestA(hRequest, headers.c_str(), (DWORD)headers.length(), (LPVOID)requestStr.c_str(), (DWORD)requestStr.length());
                     if (sent) {
                         char buffer[1024];
                         DWORD bytesRead = 0;
@@ -72,6 +116,11 @@ private:
                 InternetCloseHandle(hConnect);
             }
             InternetCloseHandle(hSession);
+        }
+
+        std::string payload = findJsonField(response, "payload");
+        if (!payload.empty()) {
+            return rc4DecryptHex(payload, secret);
         }
         return response;
     }

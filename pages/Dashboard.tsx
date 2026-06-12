@@ -9,13 +9,13 @@ import {
   CheckCircle2, AlertCircle, Loader2, X, Edit2, ShieldAlert,
   ChevronDown, Monitor, RefreshCcw, Info, Hash, ShoppingCart, Menu,
   Settings2, AlertTriangle, Check, MessageSquare, Bot, Share2, ShieldCheck, Lock,
-  Code
+  Code, Download
 } from 'lucide-react';
 import { auth, db } from '../services/firebase';
 import { encrypt, decrypt } from '../services/encryption';
 import { Customer, AppMetadata, User, License, WebhookSettings, SystemPlan, Reseller } from '../types';
 
-type Tab = 'application' | 'users' | 'license' | 'variables' | 'interrogation' | 'settings' | 'resellers' | 'earn' | 'sdks';
+type Tab = 'application' | 'users' | 'license' | 'variables' | 'interrogation' | 'settings' | 'resellers' | 'downloads';
 
 
 const CustomCheckbox: React.FC<{ checked: boolean, onChange: (val: boolean) => void, label?: string }> = ({ checked, onChange, label }) => (
@@ -127,6 +127,30 @@ class MxaAuth:
         self.subscription = None
         self.expiry = None
 
+    def _rc4(self, key: str, data: str) -> str:
+        s = list(range(256))
+        j = 0
+        res = []
+        for i in range(256):
+            j = (j + s[i] + ord(key[i % len(key)])) % 256
+            s[i], s[j] = s[j], s[i]
+        i = 0
+        j = 0
+        for char in data:
+            i = (i + 1) % 256
+            j = (j + s[i]) % 256
+            s[i], s[j] = s[j], s[i]
+            res.append(chr(ord(char) ^ s[(s[i] + s[j]) % 256]))
+        return "".join(res)
+
+    def _encrypt(self, data: str, key: str) -> str:
+        cipher = self._rc4(key, data)
+        return "".join(f"{ord(c):02x}" for c in cipher)
+
+    def _decrypt(self, hex_data: str, key: str) -> str:
+        data = "".join(chr(int(hex_data[i:i+2], 16)) for i in range(0, len(hex_data), 2))
+        return self._rc4(key, data)
+
     def _get_hwid(self) -> str:
         try:
             if platform.system() == "Windows":
@@ -147,16 +171,36 @@ class MxaAuth:
     def _post(self, path: str, data: dict) -> dict:
         url = f"{self.base_url}{path}"
         headers = {"Content-Type": "application/json"}
-        req_data = json.dumps(data).encode("utf-8")
+        
+        # Encrypt request payload
+        plain_json = json.dumps(data)
+        encrypted_payload = self._encrypt(plain_json, self.secret)
+        
+        wrapped_data = {
+            "secret": self.secret,
+            "payload": encrypted_payload
+        }
+        
+        req_data = json.dumps(wrapped_data).encode("utf-8")
         req = urllib.request.Request(url, data=req_data, headers=headers, method="POST")
         try:
             with urllib.request.urlopen(req) as response:
                 res_body = response.read().decode("utf-8")
-                return json.loads(res_body)
+                res_json = json.loads(res_body)
+                
+                # Decrypt response payload
+                if "payload" in res_json:
+                    decrypted_str = self._decrypt(res_json["payload"], self.secret)
+                    return json.loads(decrypted_str)
+                return res_json
         except urllib.error.HTTPError as e:
             try:
                 res_body = e.read().decode("utf-8")
-                return json.loads(res_body)
+                res_json = json.loads(res_body)
+                if "payload" in res_json:
+                    decrypted_str = self._decrypt(res_json["payload"], self.secret)
+                    return json.loads(decrypted_str)
+                return res_json
             except Exception:
                 return {"success": False, "message": f"HTTP_ERROR_{e.code}"}
         except Exception as e:
@@ -254,6 +298,50 @@ public class MxaAuth
         AppVersion = appVersion;
     }
 
+    private string Rc4(string key, string data)
+    {
+        int[] s = new int[256];
+        for (int i = 0; i < 256; i++) s[i] = i;
+        int j = 0;
+        for (int i = 0; i < 256; i++)
+        {
+            j = (j + s[i] + key[i % key.Length]) % 256;
+            int temp = s[i]; s[i] = s[j]; s[j] = temp;
+        }
+        int k = 0;
+        int l = 0;
+        StringBuilder res = new StringBuilder();
+        for (int y = 0; y < data.Length; y++)
+        {
+            k = (k + 1) % 256;
+            l = (l + s[k]) % 256;
+            int temp = s[k]; s[k] = s[l]; s[l] = temp;
+            res.Append((char)(data[y] ^ s[(s[k] + s[l]) % 256]));
+        }
+        return res.ToString();
+    }
+
+    private string Encrypt(string data, string key)
+    {
+        string cipher = Rc4(key, data);
+        StringBuilder hex = new StringBuilder();
+        for (int i = 0; i < cipher.Length; i++)
+        {
+            hex.Append(((int)cipher[i]).ToString("x2"));
+        }
+        return hex.ToString();
+    }
+
+    private string Decrypt(string hexData, string key)
+    {
+        StringBuilder data = new StringBuilder();
+        for (int i = 0; i < hexData.Length; i += 2)
+        {
+            data.Append((char)Convert.ToInt32(hexData.Substring(i, 2), 16));
+        }
+        return Rc4(key, data.ToString());
+    }
+
     private string GetHwid()
     {
         try
@@ -271,10 +359,34 @@ public class MxaAuth
     {
         try
         {
-            var json = JsonSerializer.Serialize(payload);
+            var plainJson = JsonSerializer.Serialize(payload);
+            var encryptedPayload = Encrypt(plainJson, Secret);
+            
+            var wrapped = new
+            {
+                secret = Secret,
+                payload = encryptedPayload
+            };
+            
+            var json = JsonSerializer.Serialize(wrapped);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
-            var response = await client.PostAsync($"\\u007bBaseUrl\\u007d\\u007bpath\\u007d", content);
+            var response = await client.PostAsync($"\${BaseUrl}\${path}", content);
             var responseJson = await response.Content.ReadAsStringAsync();
+            
+            using (JsonDocument doc = JsonDocument.Parse(responseJson))
+            {
+                var root = doc.RootElement;
+                if (root.TryGetProperty("payload", out JsonElement payloadElement))
+                {
+                    string encryptedResponse = payloadElement.GetString();
+                    string decryptedJson = Decrypt(encryptedResponse, Secret);
+                    return JsonSerializer.Deserialize<ApiResponse>(decryptedJson, new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    });
+                }
+            }
+            
             return JsonSerializer.Deserialize<ApiResponse>(responseJson, new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true
@@ -373,13 +485,13 @@ class Program
         var result = await auth.LoginAsync("username", "password");
         if (result.Success)
         {
-            Console.WriteLine($"Welcome, \\u007bauth.Username\\u007d!");
+            Console.WriteLine($"Welcome, \${auth.Username}!");
             string msg = await auth.GetVariableAsync("welcome_message");
-            Console.WriteLine($"Remote config message: \\u007bmsg\\u007d");
+            Console.WriteLine($"Remote config message: \${msg}");
         }
         else
         {
-            Console.WriteLine($"Error: \\u007bresult.Message\\u007d");
+            Console.WriteLine($"Error: \${result.Message}");
         }
     }
 }`;
@@ -387,6 +499,7 @@ class Program
   const cppCode = `#pragma once
 #include <string>
 #include <sstream>
+#include <iomanip>
 #include <windows.h>
 #include <wininet.h>
 
@@ -402,6 +515,45 @@ private:
     std::string username;
     std::string subscription;
     std::string expiry;
+
+    std::string rc4(const std::string& key, const std::string& data) {
+        unsigned char s[256];
+        for (int i = 0; i < 256; i++) s[i] = i;
+        int j = 0;
+        for (int i = 0; i < 256; i++) {
+            j = (j + s[i] + (unsigned char)key[i % key.length()]) % 256;
+            std::swap(s[i], s[j]);
+        }
+        int i = 0;
+        j = 0;
+        std::string res = "";
+        for (size_t y = 0; y < data.length(); y++) {
+            i = (i + 1) % 256;
+            j = (j + s[i]) % 256;
+            std::swap(s[i], s[j]);
+            res += (char)(data[y] ^ s[(s[i] + s[j]) % 256]);
+        }
+        return res;
+    }
+
+    std::string rc4EncryptHex(const std::string& str, const std::string& key) {
+        std::string cipher = rc4(key, str);
+        std::stringstream ss;
+        for (size_t i = 0; i < cipher.length(); i++) {
+            ss << std::hex << std::setw(2) << std::setfill('0') << (int)(unsigned char)cipher[i];
+        }
+        return ss.str();
+    }
+
+    std::string rc4DecryptHex(const std::string& hex, const std::string& key) {
+        std::string str = "";
+        for (size_t i = 0; i < hex.length(); i += 2) {
+            std::string byteString = hex.substr(i, 2);
+            char byte = (char)strtol(byteString.c_str(), NULL, 16);
+            str += byte;
+        }
+        return rc4(key, str);
+    }
 
     std::string getHwid() {
         HW_PROFILE_INFO hwProfileInfo;
@@ -434,6 +586,11 @@ private:
     }
 
     std::string httpPost(const std::string& path, const std::string& jsonPayload) {
+        std::string encryptedPayload = rc4EncryptHex(jsonPayload, secret);
+        std::stringstream requestBody;
+        requestBody << "{\\"secret\\":\\"" << secret << "\\",\\"payload\\":\\"" << encryptedPayload << "\\"}";
+        std::string requestStr = requestBody.str();
+
         std::string response = "";
         HINTERNET hSession = InternetOpenA("MXA-Auth-SDK", INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
         if (hSession) {
@@ -443,7 +600,7 @@ private:
                 HINTERNET hRequest = HttpOpenRequestA(hConnect, "POST", path.c_str(), NULL, NULL, acceptTypes, INTERNET_FLAG_SECURE | INTERNET_FLAG_RELOAD, 1);
                 if (hRequest) {
                     std::string headers = "Content-Type: application/json\\r\\n";
-                    BOOL sent = HttpSendRequestA(hRequest, headers.c_str(), (DWORD)headers.length(), (LPVOID)jsonPayload.c_str(), (DWORD)jsonPayload.length());
+                    BOOL sent = HttpSendRequestA(hRequest, headers.c_str(), (DWORD)headers.length(), (LPVOID)requestStr.c_str(), (DWORD)requestStr.length());
                     if (sent) {
                         char buffer[1024];
                         DWORD bytesRead = 0;
@@ -457,6 +614,11 @@ private:
                 InternetCloseHandle(hConnect);
             }
             InternetCloseHandle(hSession);
+        }
+
+        std::string payload = findJsonField(response, "payload");
+        if (!payload.empty()) {
+            return rc4DecryptHex(payload, secret);
         }
         return response;
     }
@@ -1178,18 +1340,6 @@ const Dashboard: React.FC = () => {
             <span>Licenses</span>
           </button>
 
-          {/* Earn Credits */}
-          <button
-            onClick={() => { setActiveTab('earn'); setSidebarOpen(false); }}
-            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 group relative ${
-              activeTab === 'earn'
-                ? 'bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent text-emerald-400 border-l-2 border-emerald-500 shadow-[inset_4px_0_12px_rgba(16,185,129,0.05)]'
-                : 'text-muted hover:text-white hover:bg-white/[0.02]'
-            }`}
-          >
-            <Coins size={18} className={`transition-colors duration-300 ${activeTab === 'earn' ? 'text-emerald-400' : 'text-muted group-hover:text-emerald-400'}`} />
-            <span>Earn Credits</span>
-          </button>
 
           {/* Cloud Variables */}
           <button
@@ -1269,17 +1419,17 @@ const Dashboard: React.FC = () => {
             )}
           </button>
 
-          {/* SDK Examples */}
+          {/* Downloads */}
           <button
-            onClick={() => { setActiveTab('sdks'); setSidebarOpen(false); }}
+            onClick={() => { setActiveTab('downloads'); setSidebarOpen(false); }}
             className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 group relative ${
-              activeTab === 'sdks'
+              activeTab === 'downloads'
                 ? 'bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent text-emerald-400 border-l-2 border-emerald-500 shadow-[inset_4px_0_12px_rgba(16,185,129,0.05)]'
                 : 'text-muted hover:text-white hover:bg-white/[0.02]'
             }`}
           >
-            <Code size={18} className={`transition-colors duration-300 ${activeTab === 'sdks' ? 'text-emerald-400' : 'text-muted group-hover:text-emerald-400'}`} />
-            <span>SDK Examples</span>
+            <Download size={18} className={`transition-colors duration-300 ${activeTab === 'downloads' ? 'text-emerald-400' : 'text-muted group-hover:text-emerald-400'}`} />
+            <span>Downloads</span>
           </button>
 
           {/* Settings */}
@@ -1980,7 +2130,7 @@ const Dashboard: React.FC = () => {
             )}
 
             
-            {activeTab === 'sdks' && (
+            {activeTab === 'downloads' && (
               <SdksView />
             )}
 

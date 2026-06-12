@@ -24,11 +24,54 @@ public class MxaAuth
         AppVersion = appVersion;
     }
 
+    private string Rc4(string key, string data)
+    {
+        int[] s = new int[256];
+        for (int i = 0; i < 256; i++) s[i] = i;
+        int j = 0;
+        for (int i = 0; i < 256; i++)
+        {
+            j = (j + s[i] + key[i % key.Length]) % 256;
+            int temp = s[i]; s[i] = s[j]; s[j] = temp;
+        }
+        int k = 0;
+        int l = 0;
+        StringBuilder res = new StringBuilder();
+        for (int y = 0; y < data.Length; y++)
+        {
+            k = (k + 1) % 256;
+            l = (l + s[k]) % 256;
+            int temp = s[k]; s[k] = s[l]; s[l] = temp;
+            res.Append((char)(data[y] ^ s[(s[k] + s[l]) % 256]));
+        }
+        return res.ToString();
+    }
+
+    private string Encrypt(string data, string key)
+    {
+        string cipher = Rc4(key, data);
+        StringBuilder hex = new StringBuilder();
+        for (int i = 0; i < cipher.Length; i++)
+        {
+            hex.Append(((int)cipher[i]).ToString("x2"));
+        }
+        return hex.ToString();
+    }
+
+    private string Decrypt(string hexData, string key)
+    {
+        StringBuilder data = new StringBuilder();
+        for (int i = 0; i < hexData.Length; i += 2)
+        {
+            data.Append((char)Convert.ToInt32(hexData.Substring(i, 2), 16));
+        }
+        return Rc4(key, data.ToString());
+    }
+
     private string GetHwid()
     {
         try
         {
-            // Simple persistent HWID using system values
             string hwid = Environment.MachineName + "-" + Environment.UserName + "-" + Environment.ProcessorCount;
             return hwid;
         }
@@ -42,10 +85,34 @@ public class MxaAuth
     {
         try
         {
-            var json = JsonSerializer.Serialize(payload);
+            var plainJson = JsonSerializer.Serialize(payload);
+            var encryptedPayload = Encrypt(plainJson, Secret);
+            
+            var wrapped = new
+            {
+                secret = Secret,
+                payload = encryptedPayload
+            };
+            
+            var json = JsonSerializer.Serialize(wrapped);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
             var response = await client.PostAsync($"{BaseUrl}{path}", content);
             var responseJson = await response.Content.ReadAsStringAsync();
+            
+            using (JsonDocument doc = JsonDocument.Parse(responseJson))
+            {
+                var root = doc.RootElement;
+                if (root.TryGetProperty("payload", out JsonElement payloadElement))
+                {
+                    string encryptedResponse = payloadElement.GetString();
+                    string decryptedJson = Decrypt(encryptedResponse, Secret);
+                    return JsonSerializer.Deserialize<ApiResponse>(decryptedJson, new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    });
+                }
+            }
+            
             return JsonSerializer.Deserialize<ApiResponse>(responseJson, new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true

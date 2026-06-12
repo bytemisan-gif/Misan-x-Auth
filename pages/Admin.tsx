@@ -9,6 +9,7 @@ import {
   ArrowUp, ArrowDown, Hammer, GripVertical, Code, UserPlus
 } from 'lucide-react';
 import { auth, db } from '../services/firebase';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 import { encrypt, decrypt } from '../services/encryption';
 import { Customer, SystemPlan, SystemConfig, SDK } from '../types';
 import { ADMIN_EMAIL } from '../constants';
@@ -47,6 +48,11 @@ const Admin: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [maintenance, setMaintenance] = useState<SystemConfig>({ maintenanceMode: false, maintenanceMessage: '' });
 
+  const [isVerified, setIsVerified] = useState(false);
+  const [verificationPassword, setVerificationPassword] = useState('');
+  const [verificationError, setVerificationError] = useState('');
+  const [verifying, setVerifying] = useState(false);
+
   const [showEditUserPlan, setShowEditUserPlan] = useState<string | null>(null); 
   const [showGiveCredits, setShowGiveCredits] = useState<string | null>(null); 
   const [showCreatePlan, setShowCreatePlan] = useState(false);
@@ -71,6 +77,7 @@ const Admin: React.FC = () => {
       navigate('/dashboard');
       return;
     }
+    if (!isVerified) return;
 
     const loadingTimer = setTimeout(() => setLoading(false), 5000);
 
@@ -153,12 +160,86 @@ const Admin: React.FC = () => {
     });
 
     return () => clearTimeout(loadingTimer);
-  }, []);
+  }, [isVerified]);
 
   const filteredCustomers = (Object.entries(customers) as [string, Customer][]).filter(([key, cust]) =>
     (cust?.email?.toLowerCase() ?? '').includes(searchTerm.toLowerCase()) ||
     (cust?.secret?.toLowerCase() ?? '').includes(searchTerm.toLowerCase())
   );
+
+  if (!isVerified) {
+    return (
+      <div className="min-h-screen w-full flex items-center justify-center relative overflow-hidden bg-[#020403] selection:bg-white/20">
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent z-0"></div>
+        <div className="absolute top-[-20%] left-[-10%] w-[500px] h-[500px] bg-emerald-500/5 blur-[120px] rounded-full z-0"></div>
+        <div className="absolute bottom-[-20%] right-[-10%] w-[400px] h-[400px] bg-teal-500/5 blur-[100px] rounded-full z-0"></div>
+        <div className="grid-bg"></div>
+
+        <div className="w-full max-w-md px-6 relative z-10 animate-fade-in">
+          <Link to="/dashboard" className="inline-flex items-center text-xs font-bold uppercase tracking-widest text-muted hover:text-white mb-6 transition-all duration-300">
+            <ArrowLeft className="mr-2" size={14} /> Back to Dashboard
+          </Link>
+
+          <div className="bg-[#050a08] border border-white/5 rounded-3xl p-8 shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent"></div>
+
+            <div className="text-center mb-8">
+              <div className="w-16 h-16 bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-[0_0_20px_rgba(16,185,129,0.1)]">
+                <Key size={28} className="text-emerald-400 animate-pulse" />
+              </div>
+              <h1 className="text-xl font-black tracking-tight uppercase">Security Verification</h1>
+              <p className="text-muted text-xs mt-2 uppercase tracking-wider font-bold">Admin Privileges Required</p>
+            </div>
+
+            {verificationError && (
+              <div className="bg-red-500/10 border border-red-500/25 text-red-400 text-xs py-3 px-4 rounded-xl mb-6 text-center animate-fade-in font-bold">
+                {verificationError}
+              </div>
+            )}
+
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                setVerifying(true);
+                setVerificationError('');
+                try {
+                  const email = auth.currentUser?.email;
+                  if (!email) throw new Error("No active session");
+                  await signInWithEmailAndPassword(auth, email, verificationPassword);
+                  setIsVerified(true);
+                } catch (err: any) {
+                  setVerificationError("Invalid administrator credentials.");
+                } finally {
+                  setVerifying(false);
+                }
+              }}
+              className="space-y-6"
+            >
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-muted uppercase tracking-wider block ml-1">Confirm Admin Password</label>
+                <input
+                  type="password"
+                  value={verificationPassword}
+                  onChange={(e) => setVerificationPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full bg-surfaceHighlight border border-white/5 rounded-2xl px-4 py-3.5 text-white placeholder-muted/30 focus:outline-none focus:border-emerald-500/50 focus:bg-[#020403] transition-all duration-300"
+                  required
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={verifying}
+                className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-[#020403] font-black py-4 rounded-2xl transition-all duration-300 uppercase tracking-widest text-xs flex justify-center items-center shadow-lg shadow-emerald-500/10 active:scale-[0.98]"
+              >
+                {verifying ? <Loader2 className="animate-spin" size={16} /> : 'Unlock Admin Panel'}
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin" /></div>;
 
@@ -718,14 +799,16 @@ const Admin: React.FC = () => {
                 onClick={async () => {
                   const newPlan = (document.getElementById('adminPlanSelect') as HTMLSelectElement).value;
                   const expDate = calculateExpiry(editPlanVal, editPlanUnit);
+                  const planCredits = plans[newPlan]?.creditPrice || 0;
                   const cust = { 
                     ...customers[showEditUserPlan], 
                     plan: newPlan,
-                    planExpiry: expDate
+                    planExpiry: expDate,
+                    credits: (customers[showEditUserPlan]?.credits || 0) + planCredits
                   };
                   await set(ref(db, `customers/${showEditUserPlan}`), encrypt(cust));
                   setShowEditUserPlan(null);
-                  addToast(`Customer plan updated to ${newPlan}`);
+                  addToast(`Customer plan updated to ${newPlan} (+${planCredits} credits granted)`);
                 }}
                 className="w-full bg-white text-black font-black py-4 rounded-xl uppercase tracking-[0.2em] text-xs hover:bg-gray-200 transition-all"
               >
@@ -831,7 +914,9 @@ const Admin: React.FC = () => {
                 const d = new FormData(e.currentTarget);
                 const email = (d.get('email') as string || '').trim().toLowerCase();
                 const plan = d.get('plan') as string;
-                const credits = parseInt(d.get('credits') as string || '0');
+                const planCredits = plans[plan]?.creditPrice || 0;
+                const initialCredits = parseInt(d.get('credits') as string || '0');
+                const credits = initialCredits + planCredits;
                 const planVal = parseInt(d.get('planVal') as string || '30');
                 const planUnit = d.get('planUnit') as string || 'days';
                 if (!email) return;

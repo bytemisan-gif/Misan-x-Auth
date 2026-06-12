@@ -116,24 +116,25 @@ const Shop: React.FC = () => {
                   ))}
                   {(!plan.features || plan.features.length === 0) && <li className="text-muted/50 italic text-xs">No extra perks</li>}
                 </ul>
-                {name.toLowerCase() === 'free' ? (
-                  <button
-                    onClick={() => buyPlan(name, plan)}
-                    disabled={customer?.plan === name || buying === name}
-                    className={`w-full py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all ${customer?.plan === name ? 'bg-white/5 text-muted' : 'bg-white text-black hover:scale-[1.02] active:scale-95'}`}
-                  >
-                    {buying === name ? <Loader2 className="animate-spin mx-auto" /> : customer?.plan === name ? 'Current Plan' : 'Get Free Plan'}
-                  </button>
-                ) : (
-                  <a
-                    href="https://discord.gg/2BBdxeKx"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={`w-full py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] text-center transition-all block ${customer?.plan === name ? 'bg-white/5 text-muted pointer-events-none' : 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white hover:scale-[1.02] hover:shadow-[0_0_15px_rgba(16,185,129,0.4)] active:scale-95'}`}
-                  >
-                    {customer?.plan === name ? 'Current Plan' : 'Purchase Premium'}
-                  </a>
-                )}
+                <button
+                  onClick={() => buyPlan(name, plan)}
+                  disabled={customer?.plan === name || buying === name}
+                  className={`w-full py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all ${
+                    customer?.plan === name 
+                      ? 'bg-white/5 text-muted' 
+                      : name.toLowerCase() === 'free plan'
+                        ? 'bg-white text-black hover:scale-[1.02] active:scale-95'
+                        : 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white hover:scale-[1.02] hover:shadow-[0_0_15px_rgba(16,185,129,0.4)] active:scale-95'
+                  }`}
+                >
+                  {buying === name 
+                    ? <Loader2 className="animate-spin mx-auto" /> 
+                    : customer?.plan === name 
+                      ? 'Current Plan' 
+                      : name.toLowerCase() === 'free plan' 
+                        ? 'Get Free Plan' 
+                        : `Purchase for ${plan.creditPrice} Credits`}
+                </button>
               </div>
             ))}
           {Object.keys(plans).length === 0 && (

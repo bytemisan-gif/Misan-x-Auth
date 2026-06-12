@@ -204,8 +204,68 @@ function validateSdkRequest(body, endpoint) {
     return { ok: true, clientNonce };
 }
 
+const rc4 = (key, str) => {
+    let s = [], j = 0, x, res = '';
+    for (let i = 0; i < 256; i++) s[i] = i;
+    for (let i = 0; i < 256; i++) {
+        j = (j + s[i] + key.charCodeAt(i % key.length)) % 256;
+        x = s[i]; s[i] = s[j]; s[j] = x;
+    }
+    let i = 0; j = 0;
+    for (let y = 0; y < str.length; y++) {
+        i = (i + 1) % 256;
+        j = (j + s[i]) % 256;
+        x = s[i]; s[i] = s[j]; s[j] = x;
+        res += String.fromCharCode(str.charCodeAt(y) ^ s[(s[i] + s[j]) % 256]);
+    }
+    return res;
+};
+
+const rc4EncryptHex = (str, key) => {
+    if (!str || !key) return str;
+    const cipher = rc4(key, str);
+    let hex = '';
+    for (let i = 0; i < cipher.length; i++) {
+        hex += cipher.charCodeAt(i).toString(16).padStart(2, '0');
+    }
+    return hex;
+};
+
+const rc4DecryptHex = (hex, key) => {
+    if (!hex || !key) return hex;
+    try {
+        let str = '';
+        for (let i = 0; i < hex.length; i += 2) {
+            str += String.fromCharCode(parseInt(hex.substring(i, 2), 16));
+        }
+        return rc4(key, str);
+    } catch (e) {
+        return hex;
+    }
+};
+
+const decryptBody = (rawBody) => {
+    if (rawBody && rawBody.payload && rawBody.secret) {
+        try {
+            const decStr = rc4DecryptHex(rawBody.payload, rawBody.secret);
+            const dec = JSON.parse(decStr);
+            if (dec && typeof dec === 'object') {
+                return { ...dec, secret: rawBody.secret, isEncryptedRequest: true };
+            }
+        } catch (e) {
+            console.error("Payload decryption failed:", e);
+        }
+    }
+    return { ...rawBody, isEncryptedRequest: false };
+};
+
 async function sdkJson(c, endpoint, requestBody, success, message, extraData = {}, status = 200) {
-    return c.json(sendResponse(success, message, extraData), status);
+    const rawResponse = sendResponse(success, message, extraData);
+    if (requestBody?.isEncryptedRequest && requestBody?.secret) {
+        const encrypted = rc4EncryptHex(JSON.stringify(rawResponse), requestBody.secret);
+        return c.json({ payload: encrypted }, status);
+    }
+    return c.json(rawResponse, status);
 }
 
 async function getAppMetadata(c, secret, appName) {
@@ -227,7 +287,7 @@ app.post('/login', async (c) => {
         const ip = c.req.header('CF-Connecting-IP') || 'unknown';
         if (isRateLimited(ip)) return c.json(sendResponse(false, 'TOO_MANY_REQUESTS'), 429);
 
-        const body = await c.req.json();
+        const body = decryptBody(await c.req.json());
         let { username, password, secret, appName, appVersion, hwid } = body;
         username = username?.trim(); password = password?.trim(); secret = secret?.trim();
         appName = appName?.trim(); appVersion = appVersion?.trim(); hwid = hwid?.trim();
@@ -271,7 +331,7 @@ app.post('/register', async (c) => {
         const ip = c.req.header('CF-Connecting-IP') || 'unknown';
         if (isRateLimited(ip)) return c.json(sendResponse(false, 'TOO_MANY_REQUESTS'), 429);
 
-        const body = await c.req.json();
+        const body = decryptBody(await c.req.json());
         let { username, password, licenseKey, secret, appName, appVersion, hwid } = body;
         if (!username || !password || !licenseKey || !secret || !appName || !appVersion) return sdkJson(c, 'register', body, false, 'Missing required fields', {}, 400);
 
@@ -356,7 +416,7 @@ app.post('/create_user', async (c) => {
 
 app.post('/versioncheck', async (c) => {
     try {
-        const body = await c.req.json();
+        const body = decryptBody(await c.req.json());
         const { secret, appName, appVersion } = body;
         const appData = await getAppMetadata(c, secret, appName);
         if (!appData) return sdkJson(c, 'versioncheck', body, false, 'App not found', {}, 404);
@@ -369,7 +429,7 @@ app.post('/versioncheck', async (c) => {
 
 app.post('/getvariable', async (c) => {
     try {
-        const body = await c.req.json();
+        const body = decryptBody(await c.req.json());
         let { secret, appName, appVersion, varName } = body;
         const appData = await getAppMetadata(c, secret, appName);
         if (!appData) return sdkJson(c, 'getvariable', body, false, 'App not found', {}, 404);
@@ -383,7 +443,7 @@ app.post('/getvariable', async (c) => {
 
 app.post('/getvariables', async (c) => {
     try {
-        const body = await c.req.json();
+        const body = decryptBody(await c.req.json());
         let { secret, appName } = body;
         const rawVars = await dbRequest(c.env, `applications/${secret}/${appName}/variables`);
         let vars = {};
