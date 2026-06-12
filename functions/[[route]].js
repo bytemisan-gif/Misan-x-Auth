@@ -4,7 +4,7 @@ import CryptoJS from 'crypto-js';
 
 const app = new Hono();
 
-app.get('/', async (c) => {
+app.get('/api-status', async (c) => {
     return c.text('Misan X Auth is Active. Dashboard is loading...', 200);
 });
 

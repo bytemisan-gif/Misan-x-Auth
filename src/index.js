@@ -6,10 +6,6 @@ const app = new Hono();
 
 app.use('*', cors());
 
-app.get('/', async (c) => {
-    return c.text('Misan X Auth is Active. Dashboard is loading...', 200);
-});
-
 app.get('/api-status', (c) => c.json({ status: 'Online', service: 'MXA Pages API' }));
 
 const encrypt = (data, secret) => {
