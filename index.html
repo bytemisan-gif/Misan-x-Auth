@@ -7,7 +7,7 @@
   <title>Misan X Authentication Advanced Licensing</title>
   <link rel="icon" type="image/x-icon" href="/favicon.ico">
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap"
     rel="stylesheet" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
@@ -16,20 +16,23 @@
       darkMode: 'class',
       theme: {
         extend: {
-          fontFamily: { sans: ['Inter', 'sans-serif'] },
+          fontFamily: { 
+            sans: ['Outfit', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace']
+          },
           colors: {
-            background: '#040408',
-            surface: '#0a0a12',
-            surfaceHighlight: '#121225',
-            border: '#1f1f38',
+            background: '#020403',
+            surface: '#050a08',
+            surfaceHighlight: '#0a1410',
+            border: '#11221b',
             primary: '#ffffff',
-            muted: '#8e8ea8',
+            muted: '#8fa89b',
             success: '#10b981',
             danger: '#ef4444',
             brand: {
-              DEFAULT: '#8b5cf6',
-              glow: '#c084fc',
-              dark: '#4c1d95',
+              DEFAULT: '#10b981',
+              glow: '#34d399',
+              dark: '#064e3b',
               cyan: '#06b6d4'
             }
           },
@@ -47,7 +50,7 @@
   </script>
   <style>
     body {
-      background-color: #050505;
+      background-color: #020403;
       color: #fff;
       overflow-x: hidden;
     }
@@ -62,18 +65,18 @@
     }
 
     ::-webkit-scrollbar-thumb {
-      background: #333;
+      background: #11221b;
       border-radius: 3px;
     }
 
     ::-webkit-scrollbar-thumb:hover {
-      background: #555;
+      background: #16a34a;
     }
 
     .glass {
-      background: rgba(10, 10, 10, 0.7);
+      background: rgba(5, 10, 8, 0.7);
       backdrop-filter: blur(10px);
-      border: 1px solid #222;
+      border: 1px solid #11221b;
     }
 
     .grid-bg {
@@ -82,7 +85,7 @@
       z-index: -1;
       pointer-events: none;
       opacity: 0.07;
-      background-image: linear-gradient(#333 1px, transparent 1px), linear-gradient(90deg, #333 1px, transparent 1px);
+      background-image: linear-gradient(#11221b 1px, transparent 1px), linear-gradient(90deg, #11221b 1px, transparent 1px);
       background-size: 50px 50px;
     }
 
@@ -92,6 +95,42 @@
       border-radius: 100%;
       filter: blur(120px);
       opacity: 0.02;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-12px); }
+    }
+    @keyframes pulse-glow {
+      0%, 100% { box-shadow: 0 0 15px rgba(16, 185, 129, 0.2); }
+      50% { box-shadow: 0 0 35px rgba(16, 185, 129, 0.6); }
+    }
+    @keyframes gradient-move {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+    .animate-float {
+      animation: float 6s ease-in-out infinite;
+    }
+    .animate-float-delayed {
+      animation: float 6s ease-in-out infinite;
+      animation-delay: 3s;
+    }
+    .animate-pulse-glow {
+      animation: pulse-glow 3s infinite;
+    }
+    .animate-gradient-x {
+      background-size: 200% 200%;
+      animation: gradient-move 8s ease infinite;
+    }
+    .hover-glow-card {
+      transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .hover-glow-card:hover {
+      box-shadow: 0 0 30px rgba(16, 185, 129, 0.15);
+      border-color: rgba(16, 185, 129, 0.3) !important;
+      transform: translateY(-6px) scale(1.015);
+      background-color: rgba(16, 185, 129, 0.02) !important;
     }
   </style>
   <script type="importmap">
@@ -112,8 +151,8 @@
 <body>
   <div id="root"></div>
   <div class="grid-bg"></div>
-  <div class="blur-glow bg-purple-600/10 w-[600px] h-[600px] top-[-10%] left-[-10%]"></div>
-  <div class="blur-glow bg-cyan-500/10 w-[500px] h-[500px] bottom-[-10%] right-[-10%]"></div>
+  <div class="blur-glow bg-emerald-600/8 w-[600px] h-[600px] top-[-10%] left-[-10%]"></div>
+  <div class="blur-glow bg-teal-500/8 w-[500px] h-[500px] bottom-[-10%] right-[-10%]"></div>
   <script type="module" src="/index.tsx"></script>
 </body>
 

@@ -25,6 +25,16 @@ const Modal: React.FC<{ title: string, onClose: () => void, children: React.Reac
   </div>
 );
 
+const calculateExpiry = (val: number, unit: string) => {
+  if (unit === 'lifetime') return 'lifetime';
+  const d = new Date();
+  if (unit === 'minutes') d.setMinutes(d.getMinutes() + val);
+  else if (unit === 'hours') d.setHours(d.getHours() + val);
+  else if (unit === 'days') d.setDate(d.getDate() + val);
+  else if (unit === 'months') d.setMonth(d.getMonth() + val);
+  return d.toISOString();
+};
+
 const Admin: React.FC = () => {
   const navigate = useNavigate();
   const [customers, setCustomers] = useState<Record<string, Customer>>({});
@@ -42,6 +52,8 @@ const Admin: React.FC = () => {
   const [showCreatePlan, setShowCreatePlan] = useState(false);
   const [showEditPlan, setShowEditPlan] = useState<string | null>(null); 
   const [showAddCustomer, setShowAddCustomer] = useState(false);
+  const [editPlanVal, setEditPlanVal] = useState(30);
+  const [editPlanUnit, setEditPlanUnit] = useState('days');
   const [confirmModal, setConfirmModal] = useState<{
     show: boolean, title: string, message: string, onConfirm: () => void, danger?: boolean
   }>({ show: false, title: '', message: '', onConfirm: () => { } });
@@ -153,25 +165,63 @@ const Admin: React.FC = () => {
   return (
     <div className="flex h-screen bg-background text-white">
       
-      <aside className="w-64 bg-surface border-r border-border p-6 flex flex-col">
-        <div className="flex items-center gap-2 font-black text-xl mb-12">
-          <span className="bg-gradient-to-r from-purple-500 to-indigo-600 text-white px-2 py-0.5 rounded text-sm shadow-[0_0_15px_rgba(139,92,246,0.4)]">MXA</span>
-          <span className="text-muted text-sm uppercase">Admin</span>
+      <aside className="w-64 bg-surface border-r border-border/80 flex flex-col">
+        <div className="p-6 border-b border-border/40 flex items-center gap-3 mb-8">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shadow-[0_0_20px_rgba(16,185,129,0.25)] animate-pulse-glow">
+            <ShieldCheck size={22} className="text-[#020403] stroke-[2.5]" />
+          </div>
+          <div>
+            <h1 className="text-sm font-black tracking-[0.15em] uppercase bg-gradient-to-r from-white via-white to-emerald-400 bg-clip-text text-transparent">
+              MISAN X AUTH
+            </h1>
+            <span className="text-[10px] font-bold text-emerald-400/80 uppercase tracking-[0.25em] block mt-0.5">
+              Admin Panel
+            </span>
+          </div>
         </div>
-        <nav className="flex-1 space-y-1">
-          <button onClick={() => setActiveTab('users')} className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-black uppercase tracking-widest rounded-xl transition-all ${activeTab === 'users' ? 'bg-white/10 text-white' : 'text-muted'}`}>
-            <Users size={18} /> Customers
+        <nav className="flex-1 px-4 space-y-1.5">
+          <button
+            onClick={() => setActiveTab('users')}
+            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 group relative ${
+              activeTab === 'users'
+                ? 'bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent text-emerald-400 border-l-2 border-emerald-500 shadow-[inset_4px_0_12px_rgba(16,185,129,0.05)]'
+                : 'text-muted hover:text-white hover:bg-white/[0.02]'
+            }`}
+          >
+            <Users size={18} className={`transition-colors duration-300 ${activeTab === 'users' ? 'text-emerald-400' : 'text-muted group-hover:text-emerald-400'}`} />
+            <span>Customers</span>
           </button>
-          <button onClick={() => setActiveTab('plans')} className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-black uppercase tracking-widest rounded-xl transition-all ${activeTab === 'plans' ? 'bg-white/10 text-white' : 'text-muted'}`}>
-            <BarChart2 size={18} /> System Plans
+          <button
+            onClick={() => setActiveTab('plans')}
+            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 group relative ${
+              activeTab === 'plans'
+                ? 'bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent text-emerald-400 border-l-2 border-emerald-500 shadow-[inset_4px_0_12px_rgba(16,185,129,0.05)]'
+                : 'text-muted hover:text-white hover:bg-white/[0.02]'
+            }`}
+          >
+            <BarChart2 size={18} className={`transition-colors duration-300 ${activeTab === 'plans' ? 'text-emerald-400' : 'text-muted group-hover:text-emerald-400'}`} />
+            <span>System Plans</span>
           </button>
-          <button onClick={() => setActiveTab('system')} className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-black uppercase tracking-widest rounded-xl transition-all ${activeTab === 'system' ? 'bg-white/10 text-white' : 'text-muted'}`}>
-            <Hammer size={18} /> System Config
+          <button
+            onClick={() => setActiveTab('system')}
+            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 group relative ${
+              activeTab === 'system'
+                ? 'bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent text-emerald-400 border-l-2 border-emerald-500 shadow-[inset_4px_0_12px_rgba(16,185,129,0.05)]'
+                : 'text-muted hover:text-white hover:bg-white/[0.02]'
+            }`}
+          >
+            <Hammer size={18} className={`transition-colors duration-300 ${activeTab === 'system' ? 'text-emerald-400' : 'text-muted group-hover:text-emerald-400'}`} />
+            <span>System Config</span>
           </button>
         </nav>
-        <Link to="/dashboard" className="mt-auto flex items-center gap-2 px-4 py-3 text-sm font-black uppercase tracking-widest text-muted hover:text-white">
-          <ArrowLeft size={18} /> Back to App
-        </Link>
+        <div className="p-4 border-t border-border/40">
+          <Link
+            to="/dashboard"
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold text-muted hover:text-white bg-white/[0.01] hover:bg-white/5 border border-white/5 rounded-xl transition-all duration-300 shadow-sm"
+          >
+            <ArrowLeft size={18} /> <span>Back to App</span>
+          </Link>
+        </div>
       </aside>
 
       <main className="flex-1 overflow-y-auto p-10 space-y-8 animate-fade-in">
@@ -242,15 +292,36 @@ const Admin: React.FC = () => {
                   {(filteredCustomers as [string, Customer][]).map(([key, c]) => (
                     <tr key={key} className="group hover:bg-white/[0.02] transition-colors">
                       <td className="p-6">
-                        <div className="flex flex-col">
-                          <span className="font-bold text-white group-hover:text-blue-400 transition-colors">{c.email}</span>
+                        <div className="flex flex-col cursor-pointer" onClick={() => {
+                          const currentExpiry = c.planExpiry;
+                          if (currentExpiry && currentExpiry !== 'lifetime') {
+                            const diffMs = new Date(currentExpiry).getTime() - new Date().getTime();
+                            const diffDays = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+                            setEditPlanVal(diffDays);
+                            setEditPlanUnit('days');
+                          } else if (currentExpiry === 'lifetime') {
+                            setEditPlanUnit('lifetime');
+                          } else {
+                            setEditPlanVal(30);
+                            setEditPlanUnit('days');
+                          }
+                          setShowEditUserPlan(key);
+                        }}>
+                          <span className="font-bold text-white group-hover:text-emerald-400 transition-colors">{c.email}</span>
                           <span className="text-[10px] font-mono text-muted/50 uppercase tracking-tighter mt-1">{c.secret}</span>
                         </div>
                       </td>
                       <td className="p-6">
-                        <span className="bg-blue-500/10 text-blue-400 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-blue-500/20">
-                          {c.plan}
-                        </span>
+                        <div className="flex flex-col gap-1 items-start">
+                          <span className="bg-emerald-500/10 text-emerald-400 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-emerald-500/20">
+                            {c.plan}
+                          </span>
+                          {c.planExpiry && (
+                            <span className="text-[10px] text-muted/60 font-mono">
+                              Expires: {c.planExpiry === 'lifetime' ? 'Lifetime' : new Date(c.planExpiry).toLocaleDateString()}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="p-6">
                         <div className="flex items-center gap-2">
@@ -616,13 +687,45 @@ const Admin: React.FC = () => {
                   {Object.keys(plans).map(pn => <option key={pn} value={pn}>{pn}</option>)}
                 </select>
               </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-black text-muted uppercase tracking-widest ml-1">Duration</label>
+                <div className="flex gap-2">
+                  {editPlanUnit !== 'lifetime' && (
+                    <input
+                      type="number"
+                      value={editPlanVal}
+                      onChange={(e) => setEditPlanVal(parseInt(e.target.value) || 0)}
+                      className="w-24 bg-surfaceHighlight border border-white/10 rounded-xl px-4 py-3 focus:outline-none text-white"
+                      min="1"
+                    />
+                  )}
+                  <select
+                    value={editPlanUnit}
+                    onChange={(e) => setEditPlanUnit(e.target.value)}
+                    className="flex-1 bg-surfaceHighlight border border-white/10 p-4 rounded-xl focus:outline-none text-white cursor-pointer"
+                  >
+                    <option value="lifetime">Lifetime</option>
+                    <option value="minutes">Minutes</option>
+                    <option value="hours">Hours</option>
+                    <option value="days">Days</option>
+                    <option value="months">Months</option>
+                  </select>
+                </div>
+              </div>
+
               <button
                 onClick={async () => {
                   const newPlan = (document.getElementById('adminPlanSelect') as HTMLSelectElement).value;
-                  const cust = { ...customers[showEditUserPlan], plan: newPlan };
+                  const expDate = calculateExpiry(editPlanVal, editPlanUnit);
+                  const cust = { 
+                    ...customers[showEditUserPlan], 
+                    plan: newPlan,
+                    planExpiry: expDate
+                  };
                   await set(ref(db, `customers/${showEditUserPlan}`), encrypt(cust));
                   setShowEditUserPlan(null);
-                  addToast('Customer plan updated');
+                  addToast(`Customer plan updated to ${newPlan}`);
                 }}
                 className="w-full bg-white text-black font-black py-4 rounded-xl uppercase tracking-[0.2em] text-xs hover:bg-gray-200 transition-all"
               >
@@ -729,6 +832,8 @@ const Admin: React.FC = () => {
                 const email = (d.get('email') as string || '').trim().toLowerCase();
                 const plan = d.get('plan') as string;
                 const credits = parseInt(d.get('credits') as string || '0');
+                const planVal = parseInt(d.get('planVal') as string || '30');
+                const planUnit = d.get('planUnit') as string || 'days';
                 if (!email) return;
 
                 const emailKey = email.replace(/\./g, ',');
@@ -737,6 +842,7 @@ const Admin: React.FC = () => {
                   return addToast('Customer email already exists', 'error');
                 }
 
+                const planExpiry = calculateExpiry(planVal, planUnit);
                 const secret = 'MXA-' + Math.random().toString(36).substring(2, 15).toUpperCase();
                 const newCustomer = {
                   email,
@@ -744,7 +850,8 @@ const Admin: React.FC = () => {
                   plan,
                   credits,
                   discordId: '',
-                  createdAt: new Date().toISOString()
+                  createdAt: new Date().toISOString(),
+                  planExpiry
                 };
 
                 await set(ref(db, `customers/${emailKey}`), encrypt(newCustomer));
@@ -766,6 +873,19 @@ const Admin: React.FC = () => {
                     <option key={pName} value={pName} className="bg-surface">{pName}</option>
                   ))}
                 </select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-muted uppercase ml-1">Plan Duration</label>
+                <div className="flex gap-2">
+                  <input name="planVal" type="number" defaultValue="30" className="w-24 bg-surfaceHighlight border border-border rounded-xl px-4 focus:outline-none text-white" />
+                  <select name="planUnit" defaultValue="days" className="flex-1 bg-surfaceHighlight border border-border p-4 rounded-xl focus:outline-none text-white">
+                    <option value="lifetime">Lifetime</option>
+                    <option value="minutes">Minutes</option>
+                    <option value="hours">Hours</option>
+                    <option value="days">Days</option>
+                    <option value="months">Months</option>
+                  </select>
+                </div>
               </div>
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-muted uppercase ml-1">Initial Credits</label>

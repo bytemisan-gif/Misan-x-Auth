@@ -37,11 +37,11 @@ const Landing: React.FC = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white selection:bg-white/20 font-sans overflow-x-hidden scroll-smooth">
+    <div className="min-h-screen bg-[#020403] text-white selection:bg-emerald-500/20 font-sans overflow-x-hidden scroll-smooth">
       
       <div className="fixed inset-0 z-0 pointer-events-none">
-        <div className="absolute top-[10%] left-[5%] w-[500px] h-[500px] bg-purple-600/[0.04] rounded-full blur-[120px]" />
-        <div className="absolute bottom-[20%] right-[5%] w-[400px] h-[400px] bg-cyan-500/[0.03] rounded-full blur-[100px]" />
+        <div className="absolute top-[10%] left-[5%] w-[500px] h-[500px] bg-emerald-600/[0.04] rounded-full blur-[120px]" />
+        <div className="absolute bottom-[20%] right-[5%] w-[400px] h-[400px] bg-lime-500/[0.03] rounded-full blur-[100px]" />
         <div className="grid-bg opacity-5" />
       </div>
 
@@ -50,7 +50,7 @@ const Landing: React.FC = () => {
         <nav className={`w-full max-w-5xl transition-all duration-500 rounded-2xl border ${isScrolled ? 'bg-black/60 backdrop-blur-xl border-white/10 py-3 px-6 shadow-2xl' : 'bg-transparent border-transparent py-5 px-8'}`}>
           <div className="flex justify-between items-center">
             <Link to="/" className="flex items-center gap-3 group">
-              <div className="bg-gradient-to-r from-purple-500 to-indigo-600 text-white w-9 h-9 flex items-center justify-center rounded-xl font-black text-xs transition-transform group-hover:scale-105 shadow-[0_0_20px_rgba(139,92,246,0.4)]">MXA</div>
+              <div className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white w-9 h-9 flex items-center justify-center rounded-xl font-black text-xs transition-transform group-hover:scale-105 shadow-[0_0_20px_rgba(16,185,129,0.4)]">MXA</div>
               <span className="font-bold text-[11px] uppercase tracking-[0.25em] text-white group-hover:text-white transition-colors">Misan X Authentication</span>
             </Link>
 
@@ -103,13 +103,13 @@ const Landing: React.FC = () => {
               </div>
               <h1 className="text-6xl md:text-8xl font-black tracking-tighter mb-8 leading-[0.85] text-white uppercase">
                 Auth made <br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-violet-300 to-cyan-400">for developers!</span>
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-teal-300 to-lime-400">for developers!</span>
               </h1>
               <p className="text-white/50 text-lg md:text-xl max-w-xl mx-auto lg:mx-0 mb-12 leading-relaxed font-medium">
                 Secure, scalable, and game-changing authentication for your applications. Get started in minutes with our powerful APIs and SDKs.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start items-center">
-                <Link to="/signup" className="h-14 px-10 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-black flex items-center gap-3 hover:from-purple-500 hover:to-indigo-500 active:scale-95 transition-all uppercase tracking-widest text-[10px] shadow-[0_0_30px_rgba(139,92,246,0.3)]">
+                <Link to="/signup" className="h-14 px-10 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-black flex items-center gap-3 hover:from-emerald-500 hover:to-teal-500 active:scale-95 transition-all uppercase tracking-widest text-[10px] shadow-[0_0_30px_rgba(16,185,129,0.3)]">
                   Start Building <ArrowRight size={14} />
                 </Link>
                 <a href="#features" className="h-14 px-10 rounded-2xl bg-white/5 border border-white/10 text-white font-bold hover:bg-white/10 transition-all uppercase tracking-widest text-[10px] flex items-center">
@@ -120,15 +120,15 @@ const Landing: React.FC = () => {
 
             
             <div className="relative animate-fade-in hidden lg:block" style={{ animationDelay: '0.2s', perspective: '2000px' }}>
-              <div className="absolute inset-0 bg-purple-600/20 blur-[100px] opacity-25 -z-10" />
+              <div className="absolute inset-0 bg-emerald-600/20 blur-[100px] opacity-25 -z-10" />
               <div
-                className="relative bg-gradient-to-br from-purple-500/30 to-indigo-500/10 p-[1px] rounded-[2rem] shadow-2xl transition-all duration-700 hover:rotate-0"
+                className="relative bg-gradient-to-br from-emerald-500/30 to-teal-500/10 p-[1px] rounded-[2rem] shadow-2xl transition-all duration-700 hover:rotate-0"
                 style={{
                   transform: 'rotateY(-20deg) rotateX(10deg)',
                   transformStyle: 'preserve-3d'
                 }}
               >
-                <div className="bg-[#05050b] rounded-[2rem] overflow-hidden">
+                <div className="bg-[#020503] rounded-[2rem] overflow-hidden">
                   <img
                     src="/dashboard.png"
                     alt="Dashboard Preview"
@@ -136,7 +136,7 @@ const Landing: React.FC = () => {
                   />
                 </div>
                 
-                <div className="absolute -bottom-6 -right-6 h-16 w-16 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-2xl flex items-center justify-center text-white font-black shadow-2xl transform translate-z-10 shadow-[0_0_20px_rgba(139,92,246,0.4)]" style={{ transform: 'translateZ(50px)' }}>
+                <div className="absolute -bottom-6 -right-6 h-16 w-16 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl flex items-center justify-center text-white font-black shadow-2xl transform translate-z-10 shadow-[0_0_20px_rgba(16,185,129,0.4)]" style={{ transform: 'translateZ(50px)' }}>
                   <ShieldCheck size={28} />
                 </div>
               </div>
@@ -169,8 +169,8 @@ const Landing: React.FC = () => {
               { label: 'Edge Ops', val: '50ms', icon: <Cpu size={12} /> },
               { label: 'Protection', val: 'AES-256', icon: <ShieldCheck size={12} /> },
             ].map((stat, i) => (
-              <div key={i} className="bg-white/[0.02] border border-white/5 p-8 rounded-3xl hover:border-purple-500/20 hover:bg-white/[0.04] transition-all group overflow-hidden relative shadow-[0_8px_32px_rgba(0,0,0,0.3)]">
-                <div className="absolute -right-4 -bottom-4 text-purple-600/[0.03] transform -rotate-12 transition-transform group-hover:scale-110">
+              <div key={i} className="bg-white/[0.02] border border-white/5 p-8 rounded-3xl hover:border-emerald-500/20 hover:bg-white/[0.04] transition-all group overflow-hidden relative shadow-[0_8px_32px_rgba(0,0,0,0.3)]">
+                <div className="absolute -right-4 -bottom-4 text-emerald-600/[0.03] transform -rotate-12 transition-transform group-hover:scale-110">
                   {React.cloneElement(stat.icon as React.ReactElement, { size: 100 })}
                 </div>
                 <div className={`flex items-center gap-2 mb-4 text-[9px] font-bold uppercase tracking-[0.2em] ${stat.color || 'text-white/40'}`}>
@@ -199,8 +199,8 @@ const Landing: React.FC = () => {
               { icon: <Terminal className="w-5 h-5" />, title: 'Native SDKs', desc: 'One-line integration for all major languages with our high-perfomance, lightweight libraries.' },
               { icon: <CheckCircle2 className="w-5 h-5" />, title: 'Easy API', desc: 'Simple yet powerful REST API for custom integrations and automated workflows.' },
             ].map((f, i) => (
-              <div key={i} className="bg-white/[0.02] border border-white/5 p-12 rounded-[2.5rem] hover:border-purple-500/20 hover:bg-white/[0.04] transition-all group relative overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.3)]">
-                <div className="h-14 w-14 bg-white/5 rounded-2xl flex items-center justify-center mb-10 text-white group-hover:bg-gradient-to-br group-hover:from-purple-500 group-hover:to-indigo-600 group-hover:text-white group-hover:scale-110 transition-all duration-500 shadow-[0_0_15px_rgba(139,92,246,0)] group-hover:shadow-[0_0_15px_rgba(139,92,246,0.3)]">
+              <div key={i} className="bg-white/[0.02] border border-white/5 p-12 rounded-[2.5rem] hover:border-emerald-500/20 hover:bg-white/[0.04] transition-all group relative overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.3)]">
+                <div className="h-14 w-14 bg-white/5 rounded-2xl flex items-center justify-center mb-10 text-white group-hover:bg-gradient-to-br group-hover:from-emerald-500 group-hover:to-teal-600 group-hover:text-white group-hover:scale-110 transition-all duration-500 shadow-[0_0_15px_rgba(16,185,129,0)] group-hover:shadow-[0_0_15px_rgba(16,185,129,0.3)]">
                   {f.icon}
                 </div>
                 <h3 className="text-xl font-black mb-4 uppercase tracking-tight">{f.title}</h3>
@@ -212,24 +212,24 @@ const Landing: React.FC = () => {
 
         
         <section className="py-24 px-8">
-          <div className="max-w-5xl mx-auto bg-gradient-to-br from-[#0c0c16] to-[#040408] border border-purple-500/10 rounded-[3rem] p-8 md:p-16 relative overflow-hidden">
+          <div className="max-w-5xl mx-auto bg-gradient-to-br from-[#05110d] to-[#020403] border border-emerald-500/10 rounded-[3rem] p-8 md:p-16 relative overflow-hidden">
             <div className="absolute top-0 right-10 w-px h-full bg-white/5" />
             <div className="flex flex-col md:flex-row gap-12 relative z-10">
               <div className="flex-shrink-0">
-                <div className="w-20 h-20 rounded-3xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
-                  <Shield className="text-purple-400 w-8 h-8" />
+                <div className="w-20 h-20 rounded-3xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+                  <Shield className="text-emerald-400 w-8 h-8" />
                 </div>
               </div>
               <div className="space-y-8">
                 <div className="flex items-center gap-3">
-                  <span className="text-[10px] font-black uppercase tracking-[0.3em] bg-purple-600 text-white px-3 py-1 rounded-md">Important</span>
+                  <span className="text-[10px] font-black uppercase tracking-[0.3em] bg-emerald-600 text-white px-3 py-1 rounded-md">Important</span>
                   <h3 className="text-2xl font-black uppercase tracking-tighter">We are an authentication service</h3>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="space-y-4">
                     <p className="text-[10px] font-black uppercase tracking-widest text-white/30">What MXA Provides</p>
                     <ul className="space-y-3 text-sm text-white/50 font-medium">
-                      <li className="flex items-start gap-2"><div className="w-1.5 h-1.5 rounded-full bg-purple-500/40 mt-1.5" /> License & Key Management</li>
+                      <li className="flex items-start gap-2"><div className="w-1.5 h-1.5 rounded-full bg-emerald-500/40 mt-1.5" /> License & Key Management</li>
                       <li className="flex items-start gap-2"><div className="w-1.5 h-1.5 rounded-full bg-white/20 mt-1.5" /> HWID Device Binding</li>
                       <li className="flex items-start gap-2"><div className="w-1.5 h-1.5 rounded-full bg-white/20 mt-1.5" /> Server-side Validation</li>
                     </ul>
@@ -251,16 +251,16 @@ const Landing: React.FC = () => {
         
         <section className="py-48 px-8 text-center relative overflow-hidden">
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-5">
-            <h2 className="text-[20vw] font-black uppercase tracking-tighter text-purple-600/10">SECURE</h2>
+            <h2 className="text-[20vw] font-black uppercase tracking-tighter text-emerald-600/10">SECURE</h2>
           </div>
           <div className="max-w-4xl mx-auto relative z-10">
             <h2 className="text-6xl md:text-8xl font-black mb-10 uppercase tracking-tighter leading-[0.85]">
-              Modernize Your <br /> <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-purple-400 italic">Authentication.</span>
+              Modernize Your <br /> <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-emerald-400 italic">Authentication.</span>
             </h2>
             <p className="text-white/40 text-lg md:text-xl font-medium mb-16 max-w-lg mx-auto leading-relaxed">
               Ready to take your software security to the next level? Join the industry standard.
             </p>
-            <Link to="/signup" className="inline-flex h-20 px-16 rounded-[2.5rem] bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-black items-center justify-center gap-4 hover:from-purple-500 hover:to-indigo-500 hover:scale-105 transition-all uppercase tracking-[0.25em] text-[10px] shadow-[0_10px_40px_rgba(139,92,246,0.35)]">
+            <Link to="/signup" className="inline-flex h-20 px-16 rounded-[2.5rem] bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-black items-center justify-center gap-4 hover:from-emerald-500 hover:to-teal-500 hover:scale-105 transition-all uppercase tracking-[0.25em] text-[10px] shadow-[0_10px_40px_rgba(16,185,129,0.35)]">
               Get Started Now <ChevronRight size={18} />
             </Link>
           </div>
@@ -273,7 +273,7 @@ const Landing: React.FC = () => {
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-20 mb-32">
             <div className="col-span-2">
               <Link to="/" className="flex items-center gap-4 mb-10 group">
-                <div className="bg-gradient-to-r from-purple-500 to-indigo-600 text-white w-10 h-10 flex items-center justify-center rounded-xl font-black text-xs shadow-[0_0_20px_rgba(139,92,246,0.4)]">MXA</div>
+                <div className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white w-10 h-10 flex items-center justify-center rounded-xl font-black text-xs shadow-[0_0_20px_rgba(16,185,129,0.4)]">MXA</div>
                 <span className="font-bold text-xs uppercase tracking-[0.4em] text-white">Misan X Authentication</span>
               </Link>
               <p className="text-white/40 text-base font-medium mb-12 max-w-md leading-relaxed">

@@ -19,7 +19,7 @@ const BrandMark: React.FC<BrandMarkProps> = ({ mode = 'default', suffix, classNa
           <div className={`flex flex-col justify-center gap-1 ${compact ? 'mr-0.5' : 'mr-1'}`}>
             <span className={`${compact ? 'h-1.5 w-1.5' : 'h-2 w-2'} rounded-full bg-white`} />
             <span className={`${compact ? 'h-1 w-4' : 'h-1.5 w-5'} rounded-full bg-white/85`} />
-            <span className={`${compact ? 'h-1 w-3' : 'h-1.5 w-4'} rounded-full bg-purple-500/90`} />
+            <span className={`${compact ? 'h-1 w-3' : 'h-1.5 w-4'} rounded-full bg-emerald-500/90`} />
           </div>
           <span className={`${compact ? 'text-[0.78rem]' : 'text-[0.92rem]'} font-black tracking-[0.24em] text-white`}>MXA</span>
         </div>

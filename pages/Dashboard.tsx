@@ -8,13 +8,14 @@ import {
   Crown, Coins, Plus, Copy, Trash2, Pause, Play, Search,
   CheckCircle2, AlertCircle, Loader2, X, Edit2, ShieldAlert,
   ChevronDown, Monitor, RefreshCcw, Info, Hash, ShoppingCart, Menu,
-  Settings2, AlertTriangle, Check, MessageSquare, Bot, Share2, ShieldCheck, Lock
+  Settings2, AlertTriangle, Check, MessageSquare, Bot, Share2, ShieldCheck, Lock,
+  Code
 } from 'lucide-react';
 import { auth, db } from '../services/firebase';
 import { encrypt, decrypt } from '../services/encryption';
 import { Customer, AppMetadata, User, License, WebhookSettings, SystemPlan, Reseller } from '../types';
 
-type Tab = 'application' | 'users' | 'license' | 'variables' | 'interrogation' | 'settings' | 'resellers' | 'earn';
+type Tab = 'application' | 'users' | 'license' | 'variables' | 'interrogation' | 'settings' | 'resellers' | 'earn' | 'sdks';
 
 
 const CustomCheckbox: React.FC<{ checked: boolean, onChange: (val: boolean) => void, label?: string }> = ({ checked, onChange, label }) => (
@@ -100,6 +101,549 @@ const Modal: React.FC<{ title: string, onClose: () => void, children: React.Reac
   </div>
 );
 
+const SdksView: React.FC = () => {
+  const [lang, setLang] = useState<'python' | 'csharp' | 'cpp'>('python');
+  const [copied, setCopied] = useState<string | null>(null);
+
+  const copy = (text: string, id: string) => {
+    navigator.clipboard.writeText(text);
+    setCopied(id);
+    setTimeout(() => setCopied(null), 2000);
+  };
+
+  const pythonCode = `import urllib.request
+import urllib.error
+import json
+import platform
+import subprocess
+
+class MxaAuth:
+    def __init__(self, secret: str, app_name: str, app_version: str):
+        self.secret = secret
+        self.app_name = app_name
+        self.app_version = app_version
+        self.base_url = "https://misanxauth.qzz.io"
+        self.username = None
+        self.subscription = None
+        self.expiry = None
+
+    def _get_hwid(self) -> str:
+        try:
+            if platform.system() == "Windows":
+                cmd = "wmic csproduct get uuid"
+                uuid = subprocess.check_output(cmd, shell=True).decode().split('\\n')[1].strip()
+                return uuid
+            elif platform.system() == "Linux":
+                with open("/etc/machine-id", "r") as f:
+                    return f.read().strip()
+            elif platform.system() == "Darwin":
+                cmd = "ioreg -rd1 -c IOPlatformExpertDevice | grep -i UUID"
+                uuid = subprocess.check_output(cmd, shell=True).decode().split('"')[-2]
+                return uuid
+        except Exception:
+            pass
+        return "UNKNOWN_HWID_" + platform.node()
+
+    def _post(self, path: str, data: dict) -> dict:
+        url = f"{self.base_url}{path}"
+        headers = {"Content-Type": "application/json"}
+        req_data = json.dumps(data).encode("utf-8")
+        req = urllib.request.Request(url, data=req_data, headers=headers, method="POST")
+        try:
+            with urllib.request.urlopen(req) as response:
+                res_body = response.read().decode("utf-8")
+                return json.loads(res_body)
+        except urllib.error.HTTPError as e:
+            try:
+                res_body = e.read().decode("utf-8")
+                return json.loads(res_body)
+            except Exception:
+                return {"success": False, "message": f"HTTP_ERROR_{e.code}"}
+        except Exception as e:
+            return {"success": False, "message": f"CONNECTION_FAILED: {str(e)}"}
+
+    def check_version(self) -> bool:
+        resp = self._post("/versioncheck", {
+            "secret": self.secret,
+            "appName": self.app_name,
+            "appVersion": self.app_version
+        })
+        return resp.get("success", False) and resp.get("message") == "VERSION_OK"
+
+    def login(self, username: str, password: str) -> dict:
+        resp = self._post("/login", {
+            "username": username,
+            "password": password,
+            "secret": self.secret,
+            "appName": self.app_name,
+            "appVersion": self.app_version,
+            "hwid": self._get_hwid()
+        })
+        if resp.get("success"):
+            self.username = resp.get("username")
+            self.subscription = resp.get("subscription")
+            self.expiry = resp.get("expiry")
+        return resp
+
+    def register(self, username: str, password: str, license_key: str) -> dict:
+        return self._post("/register", {
+            "username": username,
+            "password": password,
+            "licenseKey": license_key,
+            "secret": self.secret,
+            "appName": self.app_name,
+            "appVersion": self.app_version,
+            "hwid": self._get_hwid()
+        })
+
+    def get_variable(self, var_name: str) -> str:
+        resp = self._post("/getvariable", {
+            "secret": self.secret,
+            "appName": self.app_name,
+            "appVersion": self.app_version,
+            "varName": var_name
+        })
+        if resp.get("success"):
+            return resp.get("value")
+        return None`;
+
+  const pythonUsage = `from mxa_auth import MxaAuth
+
+# Initialize the client SDK
+auth = MxaAuth("mxa-YOUR_SECRET", "YOUR_APP_NAME", "1.0")
+
+# 1. Verify that the user is running the correct app version
+if not auth.check_version():
+    print("Application version mismatch! Please download the update.")
+    exit()
+
+# 2. Login
+result = auth.login("username", "password")
+if result.get("success"):
+    print(f"Logged in successfully! Role: {auth.subscription}")
+    
+    # 3. Retrieve remote variables
+    welcome_msg = auth.get_variable("welcome_message")
+    print(f"Message from server: {welcome_msg}")
+else:
+    print(f"Login failed: {result.get('message')}")`;
+
+  const csharpCode = `using System;
+using System.Net.Http;
+using System.Text;
+using System.Text.Json;
+using System.Threading.Tasks;
+
+public class MxaAuth
+{
+    public string Secret { get; }
+    public string AppName { get; }
+    public string AppVersion { get; }
+    public string BaseUrl { get; set; } = "https://misanxauth.qzz.io";
+
+    public string Username { get; private set; }
+    public string Subscription { get; private set; }
+    public string Expiry { get; private set; }
+
+    private static readonly HttpClient client = new HttpClient();
+
+    public MxaAuth(string secret, string appName, string appVersion)
+    {
+        Secret = secret;
+        AppName = appName;
+        AppVersion = appVersion;
+    }
+
+    private string GetHwid()
+    {
+        try
+        {
+            string hwid = Environment.MachineName + "-" + Environment.UserName + "-" + Environment.ProcessorCount;
+            return hwid;
+        }
+        catch
+        {
+            return "UNKNOWN-HWID-" + Environment.MachineName;
+        }
+    }
+
+    private async Task<ApiResponse> PostAsync(string path, object payload)
+    {
+        try
+        {
+            var json = JsonSerializer.Serialize(payload);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            var response = await client.PostAsync($"\\u007bBaseUrl\\u007d\\u007bpath\\u007d", content);
+            var responseJson = await response.Content.ReadAsStringAsync();
+            return JsonSerializer.Deserialize<ApiResponse>(responseJson, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+        }
+        catch (Exception ex)
+        {
+            return new ApiResponse { Success = false, Message = "CONNECTION_ERROR: " + ex.Message };
+        }
+    }
+
+    public async Task<bool> CheckVersionAsync()
+    {
+        var resp = await PostAsync("/versioncheck", new
+        {
+            secret = Secret,
+            appName = AppName,
+            appVersion = AppVersion
+        });
+        return resp != null && resp.Success && resp.Message == "VERSION_OK";
+    }
+
+    public async Task<ApiResponse> LoginAsync(string username, string password)
+    {
+        var resp = await PostAsync("/login", new
+        {
+            username = username,
+            password = password,
+            secret = Secret,
+            appName = AppName,
+            appVersion = AppVersion,
+            hwid = GetHwid()
+        });
+
+        if (resp != null && resp.Success)
+        {
+            Username = resp.Username;
+            Subscription = resp.Subscription;
+            Expiry = resp.Expiry;
+        }
+        return resp;
+    }
+
+    public async Task<ApiResponse> RegisterAsync(string username, string password, string licenseKey)
+    {
+        return await PostAsync("/register", new
+        {
+            username = username,
+            password = password,
+            licenseKey = licenseKey,
+            secret = Secret,
+            appName = AppName,
+            appVersion = AppVersion,
+            hwid = GetHwid()
+        });
+    }
+
+    public async Task<string> GetVariableAsync(string varName)
+    {
+        var resp = await PostAsync("/getvariable", new
+        {
+            secret = Secret,
+            appName = AppName,
+            appVersion = AppVersion,
+            varName = varName
+        });
+        return resp != null && resp.Success ? resp.Value : null;
+    }
+
+    public class ApiResponse
+    {
+        public bool Success { get; set; }
+        public string Message { get; set; }
+        public string Username { get; set; }
+        public string Subscription { get; set; }
+        public string Expiry { get; set; }
+        public string Value { get; set; }
+    }
+}`;
+
+  const csharpUsage = `using System;
+using System.Threading.Tasks;
+
+class Program
+{
+    static async Task Main(string[] args)
+    {
+        var auth = new MxaAuth("mxa-YOUR_SECRET", "YOUR_APP_NAME", "1.0");
+
+        if (!await auth.CheckVersionAsync())
+        {
+            Console.WriteLine("Outdated version!");
+            return;
+        }
+
+        var result = await auth.LoginAsync("username", "password");
+        if (result.Success)
+        {
+            Console.WriteLine($"Welcome, \\u007bauth.Username\\u007d!");
+            string msg = await auth.GetVariableAsync("welcome_message");
+            Console.WriteLine($"Remote config message: \\u007bmsg\\u007d");
+        }
+        else
+        {
+            Console.WriteLine($"Error: \\u007bresult.Message\\u007d");
+        }
+    }
+}`;
+
+  const cppCode = `#pragma once
+#include <string>
+#include <sstream>
+#include <windows.h>
+#include <wininet.h>
+
+#pragma comment(lib, "wininet.lib")
+
+class MxaAuth {
+private:
+    std::string secret;
+    std::string appName;
+    std::string appVersion;
+    std::string baseUrl = "misanxauth.qzz.io";
+
+    std::string username;
+    std::string subscription;
+    std::string expiry;
+
+    std::string getHwid() {
+        HW_PROFILE_INFO hwProfileInfo;
+        if (GetCurrentHwProfile(&hwProfileInfo)) {
+            return hwProfileInfo.szHwProfileGuid;
+        }
+        return "UNKNOWN-C++-HWID";
+    }
+
+    std::string findJsonField(const std::string& json, const std::string& field) {
+        size_t pos = json.find("\\"" + field + "\\"");
+        if (pos == std::string::npos) return "";
+        pos = json.find(":", pos);
+        if (pos == std::string::npos) return "";
+        pos = json.find_first_not_of(" \\t\\r\\n", pos + 1);
+        if (pos == std::string::npos) return "";
+        
+        if (json[pos] == '"') {
+            size_t end = json.find("\\"", pos + 1);
+            if (end == std::string::npos) return "";
+            return json.substr(pos + 1, end - pos - 1);
+        } else {
+            size_t end = json.find_first_of(",}", pos);
+            if (end == std::string::npos) return "";
+            std::string val = json.substr(pos, end - pos);
+            val.erase(0, val.find_first_not_of(" \\t\\r\\n"));
+            val.erase(val.find_last_not_of(" \\t\\r\\n") + 1);
+            return val;
+        }
+    }
+
+    std::string httpPost(const std::string& path, const std::string& jsonPayload) {
+        std::string response = "";
+        HINTERNET hSession = InternetOpenA("MXA-Auth-SDK", INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
+        if (hSession) {
+            HINTERNET hConnect = InternetConnectA(hSession, baseUrl.c_str(), INTERNET_DEFAULT_HTTPS_PORT, NULL, NULL, INTERNET_SERVICE_HTTP, 0, 1);
+            if (hConnect) {
+                const char* acceptTypes[] = { "application/json", NULL };
+                HINTERNET hRequest = HttpOpenRequestA(hConnect, "POST", path.c_str(), NULL, NULL, acceptTypes, INTERNET_FLAG_SECURE | INTERNET_FLAG_RELOAD, 1);
+                if (hRequest) {
+                    std::string headers = "Content-Type: application/json\\r\\n";
+                    BOOL sent = HttpSendRequestA(hRequest, headers.c_str(), (DWORD)headers.length(), (LPVOID)jsonPayload.c_str(), (DWORD)jsonPayload.length());
+                    if (sent) {
+                        char buffer[1024];
+                        DWORD bytesRead = 0;
+                        while (InternetReadFile(hRequest, buffer, sizeof(buffer) - 1, &bytesRead) && bytesRead > 0) {
+                            buffer[bytesRead] = '\\0';
+                            response += buffer;
+                        }
+                    }
+                    InternetCloseHandle(hRequest);
+                }
+                InternetCloseHandle(hConnect);
+            }
+            InternetCloseHandle(hSession);
+        }
+        return response;
+    }
+
+public:
+    MxaAuth(const std::string& secret, const std::string& appName, const std::string& appVersion) 
+        : secret(secret), appName(appName), appVersion(appVersion) {}
+
+    bool checkVersion() {
+        std::stringstream ss;
+        ss << "{\\"secret\\":\\"" << secret << "\\",\\"appName\\":\\"" << appName << "\\",\\"appVersion\\":\\"" << appVersion << "\\"}";
+        std::string res = httpPost("/versioncheck", ss.str());
+        return findJsonField(res, "message") == "VERSION_OK" && findJsonField(res, "success") == "true";
+    }
+
+    struct Response {
+        bool success;
+        std::string message;
+        std::string username;
+        std::string subscription;
+        std::string expiry;
+    };
+
+    Response login(const std::string& user, const std::string& pass) {
+        std::stringstream ss;
+        ss << "{\\"username\\":\\"" << user << "\\",\\"password\\":\\"" << pass 
+           << "\\",\\"secret\\":\\"" << secret << "\\",\\"appName\\":\\"" << appName 
+           << "\\",\\"appVersion\\":\\"" << appVersion << "\\",\\"hwid\\":\\"" << getHwid() << "\\"}";
+        
+        std::string res = httpPost("/login", ss.str());
+        Response r;
+        r.success = findJsonField(res, "success") == "true";
+        r.message = findJsonField(res, "message");
+        if (r.success) {
+            this->username = findJsonField(res, "username");
+            this->subscription = findJsonField(res, "subscription");
+            this->expiry = findJsonField(res, "expiry");
+            r.username = this->username;
+            r.subscription = this->subscription;
+            r.expiry = this->expiry;
+        }
+        return r;
+    }
+
+    Response registerUser(const std::string& user, const std::string& pass, const std::string& key) {
+        std::stringstream ss;
+        ss << "{\\"username\\":\\"" << user << "\\",\\"password\\":\\"" << pass 
+           << "\\",\\"licenseKey\\":\\"" << key << "\\",\\"secret\\":\\"" << secret 
+           << "\\",\\"appName\\":\\"" << appName << "\\",\\"appVersion\\":\\"" << appVersion 
+           << "\\",\\"hwid\\":\\"" << getHwid() << "\\"}";
+        
+        std::string res = httpPost("/register", ss.str());
+        Response r;
+        r.success = findJsonField(res, "success") == "true";
+        r.message = findJsonField(res, "message");
+        return r;
+    }
+
+    std::string getVariable(const std::string& varName) {
+        std::stringstream ss;
+        ss << "{\\"secret\\":\\"" << secret << "\\",\\"appName\\":\\"" << appName 
+           << "\\",\\"appVersion\\":\\"" << appVersion << "\\",\\"varName\\":\\"" << varName << "\\"}";
+        std::string res = httpPost("/getvariable", ss.str());
+        if (findJsonField(res, "success") == "true") {
+            return findJsonField(res, "value");
+        }
+        return "";
+    }
+};`;
+
+  const cppUsage = `#include <iostream>
+#include "mxa_auth.hpp"
+
+int main() {
+    MxaAuth auth("mxa-YOUR_SECRET", "YOUR_APP_NAME", "1.0");
+
+    if (!auth.checkVersion()) {
+        std::cout << "Version mismatch! Update required.\\n";
+        return 0;
+    }
+
+    MxaAuth::Response res = auth.login("my_user", "my_pass");
+    if (res.success) {
+        std::cout << "Welcome " << res.username << "! Rank: " << res.subscription << "\\n";
+        std::cout << "Secret Var: " << auth.getVariable("welcome_message") << "\\n";
+    } else {
+        std::cout << "Login failed: " << res.message << "\\n";
+    }
+    return 0;
+}`;
+
+  const currentCode = lang === 'python' ? pythonCode : lang === 'csharp' ? csharpCode : cppCode;
+  const currentUsage = lang === 'python' ? pythonUsage : lang === 'csharp' ? csharpUsage : cppUsage;
+  const currentDownload = lang === 'python' ? '/sdks/mxa_auth.py' : lang === 'csharp' ? '/sdks/MxaAuth.cs' : '/sdks/mxa_auth.hpp';
+  const currentFilename = lang === 'python' ? 'mxa_auth.py' : lang === 'csharp' ? 'MxaAuth.cs' : 'mxa_auth.hpp';
+
+  return (
+    <div className="space-y-8 animate-fade-in">
+      <div>
+        <h2 className="text-2xl font-bold">SDK Examples</h2>
+        <p className="text-muted text-sm mt-1">
+          Download zero-dependency client SDK examples and integrate Misan X Auth directly into your projects.
+        </p>
+      </div>
+
+      <div className="flex gap-2 p-1 bg-white/[0.03] border border-white/[0.06] rounded-xl max-w-md">
+        {(['python', 'csharp', 'cpp'] as const).map((l) => (
+          <button
+            key={l}
+            onClick={() => setLang(l)}
+            className={`flex-1 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all
+              ${lang === l 
+                ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/15' 
+                : 'text-muted hover:text-white'}`}
+          >
+            {l === 'python' ? 'Python' : l === 'csharp' ? 'C#' : 'C++'}
+          </button>
+        ))}
+      </div>
+
+      <div className="grid lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 space-y-6">
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="text-xs font-mono text-muted/60 bg-white/[0.03] px-3 py-1.5 rounded-lg border border-white/[0.06]">{currentFilename}</span>
+              <div className="flex items-center gap-2">
+                <a href={currentDownload} download className="px-3 py-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5">
+                  Download File
+                </a>
+                <button
+                  onClick={() => copy(currentCode, 'sdk-code')}
+                  className="p-1.5 bg-white/5 hover:bg-white/10 rounded-lg transition-all text-muted hover:text-white"
+                >
+                  {copied === 'sdk-code' ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
+                </button>
+              </div>
+            </div>
+            <pre className="bg-black/40 border border-white/[0.06] rounded-xl p-5 text-xs font-mono text-white/80 overflow-x-auto max-h-[350px] leading-relaxed custom-scrollbar">
+              <code>{currentCode}</code>
+            </pre>
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="text-xs font-bold text-white uppercase tracking-wider">Example Usage</span>
+              <button
+                onClick={() => copy(currentUsage, 'sdk-usage')}
+                className="p-1.5 bg-white/5 hover:bg-white/10 rounded-lg transition-all text-muted hover:text-white"
+              >
+                {copied === 'sdk-usage' ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
+              </button>
+            </div>
+            <pre className="bg-black/40 border border-white/[0.06] rounded-xl p-5 text-xs font-mono text-white/80 overflow-x-auto leading-relaxed">
+              <code>{currentUsage}</code>
+            </pre>
+          </div>
+        </div>
+
+        <div className="space-y-6">
+          <div className="p-6 bg-white/[0.02] border border-white/[0.07] rounded-2xl space-y-4">
+            <h3 className="font-black text-white uppercase tracking-wider text-sm">Integration Info</h3>
+            <ul className="space-y-3 text-xs text-muted leading-relaxed">
+              <li className="flex gap-2.5 items-start">
+                <CheckCircle2 size={14} className="text-emerald-400 mt-0.5 shrink-0" />
+                <div>
+                  <strong className="text-white">API Endpoint:</strong> All SDKs reference the secure backend at <code>https://misanxauth.qzz.io</code>.
+                </div>
+              </li>
+              <li className="flex gap-2.5 items-start">
+                <CheckCircle2 size={14} className="text-emerald-400 mt-0.5 shrink-0" />
+                <div>
+                  <strong className="text-white">Windows Support:</strong> The C++ client uses native WinINet, making it extremely lightweight and compileable without external networking libs.
+                </div>
+              </li>
+              <li className="flex gap-2.5 items-start">
+                <CheckCircle2 size={14} className="text-emerald-400 mt-0.5 shrink-0" />
+                <div>
+                  <strong className="text-white">HWID Bind:</strong> Machine locks are calculated automatically from bios/mac properties depending on the language.
+                </div>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -143,13 +687,15 @@ const Dashboard: React.FC = () => {
   const [licenseFilter, setLicenseFilter] = useState('all');
 
   const [extendUnit, setExtendUnit] = useState('days');
-  const [createUnit, setCreateUnit] = useState('days');
+  const [profileName, setProfileName] = useState<string>('');
+  const [profileAvatar, setProfileAvatar] = useState<string | null>(null);
   const [genLicenseUnit, setGenLicenseUnit] = useState('days');
   const [createHwidLock, setCreateHwidLock] = useState(true);
   const [createOneTime, setCreateOneTime] = useState(false);
   const [licenseSegs, setLicenseSegs] = useState('4');
   const [licenseLen, setLicenseLen] = useState('5');
   const [createVal, setCreateVal] = useState(1);
+  const [createUnit, setCreateUnit] = useState('lifetime');
   const [genLicVal, setGenLicVal] = useState(1);
 
   const [resellers, setResellers] = useState<Record<string, Reseller>>({});
@@ -198,10 +744,62 @@ const Dashboard: React.FC = () => {
     onValue(ref(db, `customers/${emailKey}`), async (snap) => {
       const data = decrypt(snap.val());
       if (data) {
+        if (data.planExpiry && data.planExpiry !== 'lifetime' && new Date(data.planExpiry) < new Date()) {
+          data.plan = 'Free Plan';
+          data.planExpiry = undefined;
+          await set(ref(db, `customers/${emailKey}`), encrypt(data));
+        }
         setCustomer(data);
         setUserSecret(data.secret);
         const planSnap = await get(ref(db, `system/plans/${data.plan}`));
         if (planSnap.exists()) setPlanLimits(decrypt(planSnap.val()));
+
+        // Initial default fallback from auth profile or email username
+        const defaultName = auth.currentUser?.displayName || data.email.split('@')[0];
+        setProfileName(defaultName);
+        if (auth.currentUser?.photoURL) setProfileAvatar(auth.currentUser.photoURL);
+
+        // Fetch Discord information if linked
+        if (data.discordId) {
+          const fetchDiscord = async () => {
+            try {
+              const res = await fetch(`https://discordlookup.mesalytic.org/v1/user/${data.discordId}`);
+              if (res.ok) {
+                const dData = await res.json();
+                if (dData && dData.username) {
+                  setProfileName(dData.global_name || dData.username);
+                  if (dData.avatar) {
+                    setProfileAvatar(`https://cdn.discordapp.com/avatars/${data.discordId}/${dData.avatar}.png?size=128`);
+                  } else {
+                    setProfileAvatar(`https://cdn.discordapp.com/embed/avatars/${parseInt(data.discordId) % 5}.png`);
+                  }
+                  return;
+                }
+              }
+            } catch (e) {
+              console.warn("Mesalytic lookup failed, trying Lanyard...", e);
+            }
+
+            try {
+              const res2 = await fetch(`https://api.lanyard.rest/v1/users/${data.discordId}`);
+              if (res2.ok) {
+                const lData = await res2.json();
+                if (lData && lData.success && lData.data?.discord_user) {
+                  const dUser = lData.data.discord_user;
+                  setProfileName(dUser.global_name || dUser.username);
+                  if (dUser.avatar) {
+                    setProfileAvatar(`https://cdn.discordapp.com/avatars/${data.discordId}/${dUser.avatar}.png?size=128`);
+                  } else {
+                    setProfileAvatar(`https://cdn.discordapp.com/embed/avatars/${parseInt(data.discordId) % 5}.png`);
+                  }
+                }
+              }
+            } catch (e2) {
+              console.error("Lanyard lookup failed:", e2);
+            }
+          };
+          fetchDiscord();
+        }
       } else {
         const secret = 'MXA-' + Math.random().toString(36).substring(2, 15).toUpperCase();
         const customer = {
@@ -526,38 +1124,74 @@ const Dashboard: React.FC = () => {
       <div className="fixed inset-0 z-0 pointer-events-none opacity-[0.05]" style={{ backgroundImage: 'linear-gradient(#333 1px, transparent 1px), linear-gradient(90deg, #333 1px, transparent 1px)', backgroundSize: '50px 50px' }}></div>
 
       
-      <aside className={`fixed inset-y-0 left-0 z-40 w-64 bg-surface border-r border-border transform transition-transform duration-300 md:relative md:transform-none flex flex-col ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="p-6 border-b border-border flex items-center justify-center gap-2 font-bold text-lg">
-          <span className="bg-gradient-to-r from-purple-500 to-indigo-600 text-white px-2 py-0.5 rounded text-xs font-extrabold uppercase tracking-tight shadow-[0_0_15px_rgba(139,92,246,0.4)]">Misan X Auth</span>
-          <span className="text-muted tracking-tight">Dashboard</span>
+      <aside className={`fixed inset-y-0 left-0 z-40 w-64 bg-surface border-r border-border/80 transform transition-transform duration-300 md:relative md:transform-none flex flex-col ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="p-6 border-b border-border/40 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shadow-[0_0_20px_rgba(16,185,129,0.25)] animate-pulse-glow">
+            <ShieldCheck size={22} className="text-[#020403] stroke-[2.5]" />
+          </div>
+          <div>
+            <h1 className="text-sm font-black tracking-[0.15em] uppercase bg-gradient-to-r from-white via-white to-emerald-400 bg-clip-text text-transparent">
+              MISAN X AUTH
+            </h1>
+            <span className="text-[10px] font-bold text-emerald-400/80 uppercase tracking-[0.25em] block mt-0.5">
+              Dashboard
+            </span>
+          </div>
         </div>
-        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+        <nav className="flex-1 p-4 space-y-1.5 overflow-y-auto">
+          {/* Application */}
           <button
             onClick={() => { setActiveTab('application'); setSidebarOpen(false); }}
-            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all ${activeTab === 'application' ? 'bg-white/10 text-white' : 'text-muted hover:text-white hover:bg-white/5'}`}
+            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 group relative ${
+              activeTab === 'application'
+                ? 'bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent text-emerald-400 border-l-2 border-emerald-500 shadow-[inset_4px_0_12px_rgba(16,185,129,0.05)]'
+                : 'text-muted hover:text-white hover:bg-white/[0.02]'
+            }`}
           >
-            <Box size={18} /> Application
+            <Box size={18} className={`transition-colors duration-300 ${activeTab === 'application' ? 'text-emerald-400' : 'text-muted group-hover:text-emerald-400'}`} />
+            <span>Application</span>
           </button>
+
+          {/* Users */}
           <button
             onClick={() => { setActiveTab('users'); setSidebarOpen(false); }}
-            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all ${activeTab === 'users' ? 'bg-white/10 text-white' : 'text-muted hover:text-white hover:bg-white/5'}`}
+            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 group relative ${
+              activeTab === 'users'
+                ? 'bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent text-emerald-400 border-l-2 border-emerald-500 shadow-[inset_4px_0_12px_rgba(16,185,129,0.05)]'
+                : 'text-muted hover:text-white hover:bg-white/[0.02]'
+            }`}
           >
-            <Users size={18} /> Users
+            <Users size={18} className={`transition-colors duration-300 ${activeTab === 'users' ? 'text-emerald-400' : 'text-muted group-hover:text-emerald-400'}`} />
+            <span>Users</span>
           </button>
+
+          {/* Licenses */}
           <button
             onClick={() => { setActiveTab('license'); setSidebarOpen(false); }}
-            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all ${activeTab === 'license' ? 'bg-white/10 text-white' : 'text-muted hover:text-white hover:bg-white/5'}`}
+            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 group relative ${
+              activeTab === 'license'
+                ? 'bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent text-emerald-400 border-l-2 border-emerald-500 shadow-[inset_4px_0_12px_rgba(16,185,129,0.05)]'
+                : 'text-muted hover:text-white hover:bg-white/[0.02]'
+            }`}
           >
-            <Key size={18} /> Licenses
+            <Key size={18} className={`transition-colors duration-300 ${activeTab === 'license' ? 'text-emerald-400' : 'text-muted group-hover:text-emerald-400'}`} />
+            <span>Licenses</span>
           </button>
 
+          {/* Earn Credits */}
           <button
             onClick={() => { setActiveTab('earn'); setSidebarOpen(false); }}
-            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all ${activeTab === 'earn' ? 'bg-white/10 text-white' : 'text-muted hover:text-white hover:bg-white/5'}`}
+            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 group relative ${
+              activeTab === 'earn'
+                ? 'bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent text-emerald-400 border-l-2 border-emerald-500 shadow-[inset_4px_0_12px_rgba(16,185,129,0.05)]'
+                : 'text-muted hover:text-white hover:bg-white/[0.02]'
+            }`}
           >
-            <Coins size={18} /> Earn Credits
+            <Coins size={18} className={`transition-colors duration-300 ${activeTab === 'earn' ? 'text-emerald-400' : 'text-muted group-hover:text-emerald-400'}`} />
+            <span>Earn Credits</span>
           </button>
 
+          {/* Cloud Variables */}
           <button
             onClick={() => {
               const lock = isFeatureLocked('variables');
@@ -568,19 +1202,24 @@ const Dashboard: React.FC = () => {
               setActiveTab('variables');
               if (window.innerWidth < 768) setSidebarOpen(false);
             }}
-            className={`w-full flex items-center justify-between p-3 rounded-xl transition-all group ${activeTab === 'variables' ? 'bg-white text-black font-semibold' : 'text-muted hover:text-white hover:bg-white/5'
-              }`}
+            className={`w-full flex items-center justify-between px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 group relative ${
+              activeTab === 'variables'
+                ? 'bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent text-emerald-400 border-l-2 border-emerald-500 shadow-[inset_4px_0_12px_rgba(16,185,129,0.05)]'
+                : 'text-muted hover:text-white hover:bg-white/[0.02]'
+            }`}
           >
             <div className="flex items-center gap-3">
-              <Database size={18} />
-              <span className="text-sm font-medium">Cloud Variables</span>
+              <Database size={18} className={`transition-colors duration-300 ${activeTab === 'variables' ? 'text-emerald-400' : 'text-muted group-hover:text-emerald-400'}`} />
+              <span>Cloud Variables</span>
             </div>
-            {isFeatureLocked('variables').locked && <Lock size={14} className="text-muted/50" />}
+            {isFeatureLocked('variables').locked && (
+              <Lock size={14} className="text-muted/40 group-hover:text-emerald-400/50 transition-colors duration-300" />
+            )}
           </button>
 
+          {/* Interrogation */}
           <button
             onClick={() => {
-              const lock = isFeatureLocked('interrogation'); 
               const lockState = isFeatureLocked('webhooks');
               if (lockState.locked) {
                 addToast(`Upgrade to ${lockState.requiredPlan} to access Webhooks`, 'error');
@@ -589,16 +1228,22 @@ const Dashboard: React.FC = () => {
               setActiveTab('interrogation');
               if (window.innerWidth < 768) setSidebarOpen(false);
             }}
-            className={`w-full flex items-center justify-between p-3 rounded-xl transition-all group ${activeTab === 'interrogation' ? 'bg-white text-black font-semibold' : 'text-muted hover:text-white hover:bg-white/5'
-              }`}
+            className={`w-full flex items-center justify-between px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 group relative ${
+              activeTab === 'interrogation'
+                ? 'bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent text-emerald-400 border-l-2 border-emerald-500 shadow-[inset_4px_0_12px_rgba(16,185,129,0.05)]'
+                : 'text-muted hover:text-white hover:bg-white/[0.02]'
+            }`}
           >
             <div className="flex items-center gap-3">
-              <Webhook size={18} />
-              <span className="text-sm font-medium">Interrogation</span>
+              <Webhook size={18} className={`transition-colors duration-300 ${activeTab === 'interrogation' ? 'text-emerald-400' : 'text-muted group-hover:text-emerald-400'}`} />
+              <span>Interrogation</span>
             </div>
-            {isFeatureLocked('webhooks').locked && <Lock size={14} className="text-muted/50" />}
+            {isFeatureLocked('webhooks').locked && (
+              <Lock size={14} className="text-muted/40 group-hover:text-emerald-400/50 transition-colors duration-300" />
+            )}
           </button>
 
+          {/* Resellers */}
           <button
             onClick={() => {
               const lock = isFeatureLocked('resellers');
@@ -609,25 +1254,66 @@ const Dashboard: React.FC = () => {
               setActiveTab('resellers');
               if (window.innerWidth < 768) setSidebarOpen(false);
             }}
-            className={`w-full flex items-center justify-between p-3 rounded-xl transition-all group ${activeTab === 'resellers' ? 'bg-white text-black font-semibold' : 'text-muted hover:text-white hover:bg-white/5'
-              }`}
+            className={`w-full flex items-center justify-between px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 group relative ${
+              activeTab === 'resellers'
+                ? 'bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent text-emerald-400 border-l-2 border-emerald-500 shadow-[inset_4px_0_12px_rgba(16,185,129,0.05)]'
+                : 'text-muted hover:text-white hover:bg-white/[0.02]'
+            }`}
           >
             <div className="flex items-center gap-3">
-              <ShieldCheck size={18} />
-              <span className="text-sm font-medium">Resellers</span>
+              <ShieldCheck size={18} className={`transition-colors duration-300 ${activeTab === 'resellers' ? 'text-emerald-400' : 'text-muted group-hover:text-emerald-400'}`} />
+              <span>Resellers</span>
             </div>
-            {isFeatureLocked('resellers').locked && <Lock size={14} className="text-muted/50" />}
+            {isFeatureLocked('resellers').locked && (
+              <Lock size={14} className="text-muted/40 group-hover:text-emerald-400/50 transition-colors duration-300" />
+            )}
           </button>
+
+          {/* SDK Examples */}
+          <button
+            onClick={() => { setActiveTab('sdks'); setSidebarOpen(false); }}
+            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 group relative ${
+              activeTab === 'sdks'
+                ? 'bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent text-emerald-400 border-l-2 border-emerald-500 shadow-[inset_4px_0_12px_rgba(16,185,129,0.05)]'
+                : 'text-muted hover:text-white hover:bg-white/[0.02]'
+            }`}
+          >
+            <Code size={18} className={`transition-colors duration-300 ${activeTab === 'sdks' ? 'text-emerald-400' : 'text-muted group-hover:text-emerald-400'}`} />
+            <span>SDK Examples</span>
+          </button>
+
+          {/* Settings */}
           <button
             onClick={() => { setActiveTab('settings'); setSidebarOpen(false); }}
-            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all ${activeTab === 'settings' ? 'bg-white/10 text-white' : 'text-muted hover:text-white hover:bg-white/5'}`}
+            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all duration-300 group relative ${
+              activeTab === 'settings'
+                ? 'bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent text-emerald-400 border-l-2 border-emerald-500 shadow-[inset_4px_0_12px_rgba(16,185,129,0.05)]'
+                : 'text-muted hover:text-white hover:bg-white/[0.02]'
+            }`}
           >
-            <Settings size={18} /> Settings
+            <Settings size={18} className={`transition-colors duration-300 ${activeTab === 'settings' ? 'text-emerald-400' : 'text-muted group-hover:text-emerald-400'}`} />
+            <span>Settings</span>
           </button>
         </nav>
-        <div className="p-4 border-t border-border">
-          <button onClick={logout} className="w-full flex items-center gap-2 px-4 py-3 text-sm font-medium text-danger hover:bg-danger/10 rounded-xl transition-all">
-            <LogOut size={18} /> Sign Out
+        <div className="p-4 border-t border-border/40 space-y-3">
+          <div className="flex items-center gap-3 p-3 rounded-2xl bg-gradient-to-b from-white/[0.01] to-white/[0.03] border border-border/60 shadow-lg">
+            {profileAvatar ? (
+              <img src={profileAvatar} alt="Profile" className="w-9 h-9 rounded-xl object-cover border border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.15)]" />
+            ) : (
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-[#020403] font-black text-sm shadow-[0_0_10px_rgba(16,185,129,0.2)]">
+                {(profileName || customer?.email || '?').charAt(0).toUpperCase()}
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-bold text-white truncate">{profileName || customer?.email}</p>
+              <p className="text-[9px] text-emerald-400 font-bold tracking-widest uppercase mt-0.5">{customer?.plan || 'Free Plan'}</p>
+            </div>
+          </div>
+          <button 
+            onClick={logout} 
+            className="w-full flex items-center gap-2 px-4 py-3 text-sm font-bold text-danger hover:text-white bg-danger/5 hover:bg-danger/80 border border-danger/10 hover:border-danger/20 rounded-xl transition-all duration-300 shadow-sm"
+          >
+            <LogOut size={18} /> <span>Sign Out</span>
           </button>
         </div>
       </aside>
@@ -1294,6 +1980,10 @@ const Dashboard: React.FC = () => {
             )}
 
             
+            {activeTab === 'sdks' && (
+              <SdksView />
+            )}
+
             {activeTab === 'settings' && (
               <div className="space-y-6">
                 <h2 className="text-2xl font-bold">Account Settings</h2>

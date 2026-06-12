@@ -14,6 +14,7 @@ export interface Customer {
   totalEarned?: number;
   consecutiveDays?: number;
   lastActiveDate?: string;
+  planExpiry?: string;
 }
 
 export interface SDK {

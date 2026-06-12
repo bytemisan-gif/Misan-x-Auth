@@ -7,7 +7,8 @@ import {
     ArrowLeft, Shield, Key, Share2,
     Code, ChevronRight, Copy, Check, Github,
     Lock, Users, Box, Database, Zap, BookOpen,
-    Terminal, ChevronDown, ChevronUp, Globe
+    Terminal, ChevronDown, ChevronUp, Globe,
+    CheckCircle2
 } from 'lucide-react';
 
 const BASE_URL = 'https://misanxauth.qzz.io';
@@ -25,6 +26,7 @@ L/i6HsvOzaC62R7mNOKiqaDB9bircvGj/BknhX5Etf5RAgMBAAE=
 
 const CATEGORIES = [
     { id: 'quickstart', name: 'Quick Start', icon: <Zap size={16} />, badge: 'Start Here' },
+    { id: 'sdks', name: 'Client SDKs', icon: <Code size={16} />, badge: 'NEW' },
     { id: 'auth', name: 'Authentication', icon: <Lock size={16} /> },
     { id: 'users', name: 'User Management', icon: <Users size={16} /> },
     { id: 'licenses', name: 'License Management', icon: <Key size={16} /> },
@@ -278,7 +280,7 @@ const EndpointCard: React.FC<{ ep: Endpoint; baseUrl: string }> = ({ ep, baseUrl
                 onClick={() => setOpen(o => !o)}
                 className="w-full flex items-center gap-4 p-5 text-left hover:bg-white/[0.03] transition-colors"
             >
-                <span className="shrink-0 px-3 py-1 text-[10px] font-black tracking-widest uppercase rounded-md bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                <span className="shrink-0 px-3 py-1 text-[10px] font-black tracking-widest uppercase rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                     {ep.method}
                 </span>
                 <code className="text-sm font-mono text-white/70 bg-white/5 px-3 py-1 rounded-lg">{ep.path}</code>
@@ -292,9 +294,9 @@ const EndpointCard: React.FC<{ ep: Endpoint; baseUrl: string }> = ({ ep, baseUrl
                     <p className="text-muted text-sm leading-relaxed">{ep.desc}</p>
 
                     {ep.beginner && (
-                        <div className="flex gap-3 p-4 bg-blue-500/5 border border-blue-500/15 rounded-xl">
-                            <BookOpen size={16} className="text-blue-400 mt-0.5 shrink-0" />
-                            <p className="text-blue-300/80 text-sm leading-relaxed">{ep.beginner}</p>
+                        <div className="flex gap-3 p-4 bg-emerald-500/5 border border-emerald-500/15 rounded-xl">
+                            <BookOpen size={16} className="text-emerald-400 mt-0.5 shrink-0" />
+                            <p className="text-emerald-300/80 text-sm leading-relaxed">{ep.beginner}</p>
                         </div>
                     )}
 
@@ -433,10 +435,10 @@ if (success) {
             ))}
         </div>
 
-        <div className="p-5 bg-blue-500/5 border border-blue-500/20 rounded-2xl flex gap-4">
-            <Shield className="text-blue-300 shrink-0 mt-0.5" size={18} />
+        <div className="p-5 bg-emerald-500/5 border border-emerald-500/20 rounded-2xl flex gap-4">
+            <Shield className="text-emerald-300 shrink-0 mt-0.5" size={18} />
             <div>
-                <p className="font-bold text-blue-200 text-sm mb-2">SDK security note</p>
+                <p className="font-bold text-emerald-200 text-sm mb-2">SDK security note</p>
                 <p className="text-muted text-sm leading-relaxed mb-3">
                     Hardened SDK builds send <code className="bg-white/5 px-1 rounded text-white/80">clientNonce</code> and <code className="bg-white/5 px-1 rounded text-white/80">clientTimestamp</code>.
                     SDK auth endpoints return <code className="bg-white/5 px-1 rounded text-white/80">requestNonce</code>, <code className="bg-white/5 px-1 rounded text-white/80">serverTimestamp</code>, and <code className="bg-white/5 px-1 rounded text-white/80">signature</code>.
@@ -462,6 +464,566 @@ if (success) {
     </div>
 );
 
+const SdksView: React.FC = () => {
+    const [lang, setLang] = useState<'python' | 'csharp' | 'cpp'>('python');
+    const [copied, setCopied] = useState<string | null>(null);
+
+    const copy = (text: string, id: string) => {
+        navigator.clipboard.writeText(text);
+        setCopied(id);
+        setTimeout(() => setCopied(null), 2000);
+    };
+
+    const pythonCode = `import urllib.request
+import urllib.error
+import json
+import platform
+import subprocess
+
+class MxaAuth:
+    def __init__(self, secret: str, app_name: str, app_version: str):
+        self.secret = secret
+        self.app_name = app_name
+        self.app_version = app_version
+        self.base_url = "https://misanxauth.qzz.io"
+        self.username = None
+        self.subscription = None
+        self.expiry = None
+
+    def _get_hwid(self) -> str:
+        try:
+            if platform.system() == "Windows":
+                cmd = "wmic csproduct get uuid"
+                uuid = subprocess.check_output(cmd, shell=True).decode().split('\\n')[1].strip()
+                return uuid
+            elif platform.system() == "Linux":
+                with open("/etc/machine-id", "r") as f:
+                    return f.read().strip()
+            elif platform.system() == "Darwin":
+                cmd = "ioreg -rd1 -c IOPlatformExpertDevice | grep -i UUID"
+                uuid = subprocess.check_output(cmd, shell=True).decode().split('"')[-2]
+                return uuid
+        except Exception:
+            pass
+        return "UNKNOWN_HWID_" + platform.node()
+
+    def _post(self, path: str, data: dict) -> dict:
+        url = f"{self.base_url}{path}"
+        headers = {"Content-Type": "application/json"}
+        req_data = json.dumps(data).encode("utf-8")
+        req = urllib.request.Request(url, data=req_data, headers=headers, method="POST")
+        try:
+            with urllib.request.urlopen(req) as response:
+                res_body = response.read().decode("utf-8")
+                return json.loads(res_body)
+        except urllib.error.HTTPError as e:
+            try:
+                res_body = e.read().decode("utf-8")
+                return json.loads(res_body)
+            except Exception:
+                return {"success": False, "message": f"HTTP_ERROR_{e.code}"}
+        except Exception as e:
+            return {"success": False, "message": f"CONNECTION_FAILED: {str(e)}"}
+
+    def check_version(self) -> bool:
+        resp = self._post("/versioncheck", {
+            "secret": self.secret,
+            "appName": self.app_name,
+            "appVersion": self.app_version
+        })
+        return resp.get("success", False) and resp.get("message") == "VERSION_OK"
+
+    def login(self, username: str, password: str) -> dict:
+        resp = self._post("/login", {
+            "username": username,
+            "password": password,
+            "secret": self.secret,
+            "appName": self.app_name,
+            "appVersion": self.app_version,
+            "hwid": self._get_hwid()
+        })
+        if resp.get("success"):
+            self.username = resp.get("username")
+            self.subscription = resp.get("subscription")
+            self.expiry = resp.get("expiry")
+        return resp
+
+    def register(self, username: str, password: str, license_key: str) -> dict:
+        return self._post("/register", {
+            "username": username,
+            "password": password,
+            "licenseKey": license_key,
+            "secret": self.secret,
+            "appName": self.app_name,
+            "appVersion": self.app_version,
+            "hwid": self._get_hwid()
+        })
+
+    def get_variable(self, var_name: str) -> str:
+        resp = self._post("/getvariable", {
+            "secret": self.secret,
+            "appName": self.app_name,
+            "appVersion": self.app_version,
+            "varName": var_name
+        })
+        if resp.get("success"):
+            return resp.get("value")
+        return None`;
+
+    const pythonUsage = `from mxa_auth import MxaAuth
+
+# Initialize the client SDK
+auth = MxaAuth("mxa-YOUR_SECRET", "YOUR_APP_NAME", "1.0")
+
+# 1. Verify that the user is running the correct app version
+if not auth.check_version():
+    print("Application version mismatch! Please download the update.")
+    exit()
+
+# 2. Login
+result = auth.login("username", "password")
+if result.get("success"):
+    print(f"Logged in successfully! Role: {auth.subscription}")
+    
+    # 3. Retrieve remote variables
+    welcome_msg = auth.get_variable("welcome_message")
+    print(f"Message from server: {welcome_msg}")
+else:
+    print(f"Login failed: {result.get('message')}")`;
+
+    const csharpCode = `using System;
+using System.Net.Http;
+using System.Text;
+using System.Text.Json;
+using System.Threading.Tasks;
+
+public class MxaAuth
+{
+    public string Secret { get; }
+    public string AppName { get; }
+    public string AppVersion { get; }
+    public string BaseUrl { get; set; } = "https://misanxauth.qzz.io";
+
+    public string Username { get; private set; }
+    public string Subscription { get; private set; }
+    public string Expiry { get; private set; }
+
+    private static readonly HttpClient client = new HttpClient();
+
+    public MxaAuth(string secret, string appName, string appVersion)
+    {
+        Secret = secret;
+        AppName = appName;
+        AppVersion = appVersion;
+    }
+
+    private string GetHwid()
+    {
+        try
+        {
+            string hwid = Environment.MachineName + "-" + Environment.UserName + "-" + Environment.ProcessorCount;
+            return hwid;
+        }
+        catch
+        {
+            return "UNKNOWN-HWID-" + Environment.MachineName;
+        }
+    }
+
+    private async Task<ApiResponse> PostAsync(string path, object payload)
+    {
+        try
+        {
+            var json = JsonSerializer.Serialize(payload);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            var response = await client.PostAsync($"\u007bBaseUrl\u007d\u007bpath\u007d", content);
+            var responseJson = await response.Content.ReadAsStringAsync();
+            return JsonSerializer.Deserialize<ApiResponse>(responseJson, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+        }
+        catch (Exception ex)
+        {
+            return new ApiResponse { Success = false, Message = "CONNECTION_ERROR: " + ex.Message };
+        }
+    }
+
+    public async Task<bool> CheckVersionAsync()
+    {
+        var resp = await PostAsync("/versioncheck", new
+        {
+            secret = Secret,
+            appName = AppName,
+            appVersion = AppVersion
+        });
+        return resp != null && resp.Success && resp.Message == "VERSION_OK";
+    }
+
+    public async Task<ApiResponse> LoginAsync(string username, string password)
+    {
+        var resp = await PostAsync("/login", new
+        {
+            username = username,
+            password = password,
+            secret = Secret,
+            appName = AppName,
+            appVersion = AppVersion,
+            hwid = GetHwid()
+        });
+
+        if (resp != null && resp.Success)
+        {
+            Username = resp.Username;
+            Subscription = resp.Subscription;
+            Expiry = resp.Expiry;
+        }
+        return resp;
+    }
+
+    public async Task<ApiResponse> RegisterAsync(string username, string password, string licenseKey)
+    {
+        return await PostAsync("/register", new
+        {
+            username = username,
+            password = password,
+            licenseKey = licenseKey,
+            secret = Secret,
+            appName = AppName,
+            appVersion = AppVersion,
+            hwid = GetHwid()
+        });
+    }
+
+    public async Task<string> GetVariableAsync(string varName)
+    {
+        var resp = await PostAsync("/getvariable", new
+        {
+            secret = Secret,
+            appName = AppName,
+            appVersion = AppVersion,
+            varName = varName
+        });
+        return resp != null && resp.Success ? resp.Value : null;
+    }
+
+    public class ApiResponse
+    {
+        public bool Success { get; set; }
+        public string Message { get; set; }
+        public string Username { get; set; }
+        public string Subscription { get; set; }
+        public string Expiry { get; set; }
+        public string Value { get; set; }
+    }
+}`;
+
+    const csharpUsage = `using System;
+using System.Threading.Tasks;
+
+class Program
+{
+    static async Task Main(string[] args)
+    {
+        var auth = new MxaAuth("mxa-YOUR_SECRET", "YOUR_APP_NAME", "1.0");
+
+        if (!await auth.CheckVersionAsync())
+        {
+            Console.WriteLine("Outdated version!");
+            return;
+        }
+
+        var result = await auth.LoginAsync("username", "password");
+        if (result.Success)
+        {
+            Console.WriteLine($"Welcome, \u007bauth.Username\u007d!");
+            string msg = await auth.GetVariableAsync("welcome_message");
+            Console.WriteLine($"Remote config message: \u007bmsg\u007d");
+        }
+        else
+        {
+            Console.WriteLine($"Error: \u007bresult.Message\u007d");
+        }
+    }
+}`;
+
+    const cppCode = `#pragma once
+#include <string>
+#include <sstream>
+#include <windows.h>
+#include <wininet.h>
+
+#pragma comment(lib, "wininet.lib")
+
+class MxaAuth {
+private:
+    std::string secret;
+    std::string appName;
+    std::string appVersion;
+    std::string baseUrl = "misanxauth.qzz.io";
+
+    std::string username;
+    std::string subscription;
+    std::string expiry;
+
+    std::string getHwid() {
+        HW_PROFILE_INFO hwProfileInfo;
+        if (GetCurrentHwProfile(&hwProfileInfo)) {
+            return hwProfileInfo.szHwProfileGuid;
+        }
+        return "UNKNOWN-C++-HWID";
+    }
+
+    std::string findJsonField(const std::string& json, const std::string& field) {
+        size_t pos = json.find("\\"" + field + "\\"");
+        if (pos == std::string::npos) return "";
+        pos = json.find(":", pos);
+        if (pos == std::string::npos) return "";
+        pos = json.find_first_not_of(" \\t\\r\\n", pos + 1);
+        if (pos == std::string::npos) return "";
+        
+        if (json[pos] == '"') {
+            size_t end = json.find("\\"", pos + 1);
+            if (end == std::string::npos) return "";
+            return json.substr(pos + 1, end - pos - 1);
+        } else {
+            size_t end = json.find_first_of(",}", pos);
+            if (end == std::string::npos) return "";
+            std::string val = json.substr(pos, end - pos);
+            val.erase(0, val.find_first_not_of(" \\t\\r\\n"));
+            val.erase(val.find_last_not_of(" \\t\\r\\n") + 1);
+            return val;
+        }
+    }
+
+    std::string httpPost(const std::string& path, const std::string& jsonPayload) {
+        std::string response = "";
+        HINTERNET hSession = InternetOpenA("MXA-Auth-SDK", INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
+        if (hSession) {
+            HINTERNET hConnect = InternetConnectA(hSession, baseUrl.c_str(), INTERNET_DEFAULT_HTTPS_PORT, NULL, NULL, INTERNET_SERVICE_HTTP, 0, 1);
+            if (hConnect) {
+                const char* acceptTypes[] = { "application/json", NULL };
+                HINTERNET hRequest = HttpOpenRequestA(hConnect, "POST", path.c_str(), NULL, NULL, acceptTypes, INTERNET_FLAG_SECURE | INTERNET_FLAG_RELOAD, 1);
+                if (hRequest) {
+                    std::string headers = "Content-Type: application/json\\r\\n";
+                    BOOL sent = HttpSendRequestA(hRequest, headers.c_str(), (DWORD)headers.length(), (LPVOID)jsonPayload.c_str(), (DWORD)jsonPayload.length());
+                    if (sent) {
+                        char buffer[1024];
+                        DWORD bytesRead = 0;
+                        while (InternetReadFile(hRequest, buffer, sizeof(buffer) - 1, &bytesRead) && bytesRead > 0) {
+                            buffer[bytesRead] = '\\0';
+                            response += buffer;
+                        }
+                    }
+                    InternetCloseHandle(hRequest);
+                }
+                InternetCloseHandle(hConnect);
+            }
+            InternetCloseHandle(hSession);
+        }
+        return response;
+    }
+
+public:
+    MxaAuth(const std::string& secret, const std::string& appName, const std::string& appVersion) 
+        : secret(secret), appName(appName), appVersion(appVersion) {}
+
+    bool checkVersion() {
+        std::stringstream ss;
+        ss << "{\\"secret\\":\\"" << secret << "\\",\\"appName\\":\\"" << appName << "\\",\\"appVersion\\":\\"" << appVersion << "\\"}";
+        std::string res = httpPost("/versioncheck", ss.str());
+        return findJsonField(res, "message") == "VERSION_OK" && findJsonField(res, "success") == "true";
+    }
+
+    struct Response {
+        bool success;
+        std::string message;
+        std::string username;
+        std::string subscription;
+        std::string expiry;
+    };
+
+    Response login(const std::string& user, const std::string& pass) {
+        std::stringstream ss;
+        ss << "{\\"username\\":\\"" << user << "\\",\\"password\\":\\"" << pass 
+           << "\\",\\"secret\\":\\"" << secret << "\\",\\"appName\\":\\"" << appName 
+           << "\\",\\"appVersion\\":\\"" << appVersion << "\\",\\"hwid\\":\\"" << getHwid() << "\\"}";
+        
+        std::string res = httpPost("/login", ss.str());
+        Response r;
+        r.success = findJsonField(res, "success") == "true";
+        r.message = findJsonField(res, "message");
+        if (r.success) {
+            this->username = findJsonField(res, "username");
+            this->subscription = findJsonField(res, "subscription");
+            this->expiry = findJsonField(res, "expiry");
+            r.username = this->username;
+            r.subscription = this->subscription;
+            r.expiry = this->expiry;
+        }
+        return r;
+    }
+
+    Response registerUser(const std::string& user, const std::string& pass, const std::string& key) {
+        std::stringstream ss;
+        ss << "{\\"username\\":\\"" << user << "\\",\\"password\\":\\"" << pass 
+           << "\\",\\"licenseKey\\":\\"" << key << "\\",\\"secret\\":\\"" << secret 
+           << "\\",\\"appName\\":\\"" << appName << "\\",\\"appVersion\\":\\"" << appVersion 
+           << "\\",\\"hwid\\":\\"" << getHwid() << "\\"}";
+        
+        std::string res = httpPost("/register", ss.str());
+        Response r;
+        r.success = findJsonField(res, "success") == "true";
+        r.message = findJsonField(res, "message");
+        return r;
+    }
+
+    std::string getVariable(const std::string& varName) {
+        std::stringstream ss;
+        ss << "{\\"secret\\":\\"" << secret << "\\",\\"appName\\":\\"" << appName 
+           << "\\",\\"appVersion\\":\\"" << appVersion << "\\",\\"varName\\":\\"" << varName << "\\"}";
+        std::string res = httpPost("/getvariable", ss.str());
+        if (findJsonField(res, "success") == "true") {
+            return findJsonField(res, "value");
+        }
+        return "";
+    }
+};`;
+
+    const cppUsage = `#include <iostream>
+#include "mxa_auth.hpp"
+
+int main() {
+    MxaAuth auth("mxa-YOUR_SECRET", "YOUR_APP_NAME", "1.0");
+
+    if (!auth.checkVersion()) {
+        std::cout << "Version mismatch! Update required.\\n";
+        return 0;
+    }
+
+    MxaAuth::Response res = auth.login("my_user", "my_pass");
+    if (res.success) {
+        std::cout << "Welcome " << res.username << "! Rank: " << res.subscription << "\\n";
+        std::cout << "Secret Var: " << auth.getVariable("welcome_message") << "\\n";
+    } else {
+        std::cout << "Login failed: " << res.message << "\\n";
+    }
+    return 0;
+}`;
+
+    const currentCode = lang === 'python' ? pythonCode : lang === 'csharp' ? csharpCode : cppCode;
+    const currentUsage = lang === 'python' ? pythonUsage : lang === 'csharp' ? csharpUsage : cppUsage;
+    const currentDownload = lang === 'python' ? '/sdks/mxa_auth.py' : lang === 'csharp' ? '/sdks/MxaAuth.cs' : '/sdks/mxa_auth.hpp';
+    const currentFilename = lang === 'python' ? 'mxa_auth.py' : lang === 'csharp' ? 'MxaAuth.cs' : 'mxa_auth.hpp';
+
+    return (
+        <div className="space-y-8 animate-slide-up">
+            <div>
+                <h1 className="text-4xl font-black tracking-tight mb-3">Client SDKs</h1>
+                <p className="text-muted text-base leading-relaxed max-w-2xl">
+                    Integrate Misan X Auth directly into your native client apps with these lightweight, zero-dependency SDKs.
+                </p>
+            </div>
+
+            <div className="flex gap-2 p-1 bg-white/[0.03] border border-white/[0.06] rounded-xl max-w-md">
+                {(['python', 'csharp', 'cpp'] as const).map((l) => (
+                    <button
+                        key={l}
+                        onClick={() => setLang(l)}
+                        className={`flex-1 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all
+                            ${lang === l 
+                                ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/15' 
+                                : 'text-muted hover:text-white'}`}
+                    >
+                        {l === 'python' ? 'Python' : l === 'csharp' ? 'C# (.NET)' : 'C++ (Windows)'}
+                    </button>
+                ))}
+            </div>
+
+            <div className="grid lg:grid-cols-3 gap-8">
+                <div className="lg:col-span-2 space-y-6">
+                    <div className="space-y-3">
+                        <div className="flex justify-between items-center">
+                            <span className="text-xs font-mono text-muted/60 bg-white/[0.03] px-3 py-1.5 rounded-lg border border-white/[0.06]">{currentFilename}</span>
+                            <div className="flex items-center gap-2">
+                                <a href={currentDownload} download className="px-3 py-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5">
+                                    Download File
+                                </a>
+                                <button
+                                    onClick={() => copy(currentCode, 'sdk-code')}
+                                    className="p-1.5 bg-white/5 hover:bg-white/10 rounded-lg transition-all text-muted hover:text-white"
+                                >
+                                    {copied === 'sdk-code' ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
+                                </button>
+                            </div>
+                        </div>
+                        <pre className="bg-[#0d0d0f] border border-white/[0.06] rounded-xl p-5 text-xs font-mono text-white/80 overflow-x-auto max-h-[450px] leading-relaxed custom-scrollbar">
+                            <code>{currentCode}</code>
+                        </pre>
+                    </div>
+
+                    <div className="space-y-3">
+                        <div className="flex justify-between items-center">
+                            <span className="text-xs font-bold text-white uppercase tracking-wider">Example Usage</span>
+                            <button
+                                onClick={() => copy(currentUsage, 'sdk-usage')}
+                                className="p-1.5 bg-white/5 hover:bg-white/10 rounded-lg transition-all text-muted hover:text-white"
+                            >
+                                {copied === 'sdk-usage' ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
+                            </button>
+                        </div>
+                        <pre className="bg-[#0d0d0f] border border-white/[0.06] rounded-xl p-5 text-xs font-mono text-white/80 overflow-x-auto leading-relaxed">
+                            <code>{currentUsage}</code>
+                        </pre>
+                    </div>
+                </div>
+
+                <div className="space-y-6">
+                    <div className="p-6 bg-white/[0.02] border border-white/[0.07] rounded-2xl space-y-4">
+                        <h3 className="font-black text-white uppercase tracking-wider text-sm">Implementation Checklist</h3>
+                        <ul className="space-y-3 text-xs text-muted leading-relaxed">
+                            <li className="flex gap-2.5 items-start">
+                                <CheckCircle2 size={14} className="text-emerald-400 mt-0.5 shrink-0" />
+                                <div>
+                                    <strong className="text-white">Initialize:</strong> Pass your App Secret, App Name, and Version directly to the constructor.
+                                </div>
+                            </li>
+                            <li className="flex gap-2.5 items-start">
+                                <CheckCircle2 size={14} className="text-emerald-400 mt-0.5 shrink-0" />
+                                <div>
+                                    <strong className="text-white">Verify version:</strong> Call <code>check_version()</code> at startup to block outdated clients.
+                                </div>
+                            </li>
+                            <li className="flex gap-2.5 items-start">
+                                <CheckCircle2 size={14} className="text-emerald-400 mt-0.5 shrink-0" />
+                                <div>
+                                    <strong className="text-white">HWID Lock:</strong> HWIDs are securely calculated from unique hardware markers to restrict account sharing automatically.
+                                </div>
+                            </li>
+                            <li className="flex gap-2.5 items-start">
+                                <CheckCircle2 size={14} className="text-emerald-400 mt-0.5 shrink-0" />
+                                <div>
+                                    <strong className="text-white">Remote Variables:</strong> Retrieve dynamic parameters like update links or announcement strings directly from the database using <code>get_variable()</code>.
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div className="p-6 bg-emerald-500/5 border border-emerald-500/20 rounded-2xl flex gap-3">
+                        <Shield className="text-emerald-300 shrink-0 mt-0.5" size={16} />
+                        <div className="space-y-1">
+                            <h4 className="font-bold text-emerald-200 text-xs">HTTPS Encryption</h4>
+                            <p className="text-muted text-[11px] leading-relaxed">
+                                All SDKs utilize secure TLS/HTTPS channels to communicate. Form payloads are encapsulated in JSON.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const Docs: React.FC = () => {
     const [activeCategory, setActiveCategory] = useState('quickstart');
     const [sdks, setSdks] = useState<SDK[]>([]);
@@ -486,7 +1048,7 @@ const Docs: React.FC = () => {
             <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/[0.06] backdrop-blur-xl bg-background/80">
                 <div className="max-w-[88rem] mx-auto px-6 h-16 flex items-center justify-between gap-4">
                     <Link to="/" className="flex items-center gap-2.5 group shrink-0">
-                        <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-lg flex items-center justify-center group-hover:rotate-12 transition-all shadow-lg shadow-purple-500/20">
+                        <div className="w-8 h-8 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-lg flex items-center justify-center group-hover:rotate-12 transition-all shadow-lg shadow-emerald-500/20">
                             <Shield className="text-white" size={18} />
                         </div>
                         <span className="font-black tracking-tight text-lg">MXA <span className="text-muted font-light">Docs</span></span>
@@ -527,11 +1089,11 @@ const Docs: React.FC = () => {
                                 onClick={() => { setActiveCategory(cat.id); setMobileSidebarOpen(false); }}
                                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 text-sm text-left
                                     ${activeCategory === cat.id
-                                        ? 'bg-white text-black font-bold shadow-lg shadow-white/5'
+                                        ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold shadow-lg shadow-emerald-500/15'
                                         : 'text-muted hover:text-white hover:bg-white/[0.05] font-medium'
                                     }`}
                             >
-                                <span className={activeCategory === cat.id ? 'text-black' : 'text-muted/50'}>{cat.icon}</span>
+                                <span className={activeCategory === cat.id ? 'text-white' : 'text-muted/50'}>{cat.icon}</span>
                                 <span className="flex-1">{cat.name}</span>
                                 {cat.badge && (
                                     <span className="text-[8px] font-black bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full uppercase tracking-widest">
@@ -565,6 +1127,8 @@ const Docs: React.FC = () => {
                 <main className="flex-1 p-6 lg:p-10 min-w-0">
                     {activeCategory === 'quickstart' ? (
                         <QuickStart />
+                    ) : activeCategory === 'sdks' ? (
+                        <SdksView />
                     ) : (
                         <div className="space-y-6">
                             <div className="mb-8">

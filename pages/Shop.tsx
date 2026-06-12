@@ -62,7 +62,7 @@ const Shop: React.FC = () => {
       <nav className="fixed top-0 left-0 right-0 z-50 py-6 border-b border-white/5 bg-background/50 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-8 flex justify-between items-center">
           <Link to="/" className="flex items-center gap-3">
-            <div className="bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-black px-2 py-0.5 rounded text-sm tracking-tighter shadow-[0_0_15px_rgba(139,92,246,0.4)]">MXA</div>
+            <div className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-black px-2 py-0.5 rounded text-sm tracking-tighter shadow-[0_0_15px_rgba(16,185,129,0.4)]">MXA</div>
             <span className="font-black text-sm uppercase tracking-widest">Shop</span>
           </Link>
           <div className="flex items-center gap-6">
@@ -86,9 +86,9 @@ const Shop: React.FC = () => {
           {(Object.entries(plans) as [string, SystemPlan][])
             .sort((a, b) => (a[1].order || 0) - (b[1].order || 0))
             .map(([name, plan]) => (
-              <div key={name} className="bg-surface border border-border p-8 rounded-[32px] hover:border-white/20 transition-all flex flex-col group relative overflow-hidden">
+              <div key={name} className="bg-surface border border-border p-8 rounded-[32px] hover-glow-card flex flex-col group relative overflow-hidden">
                 {customer?.plan === name && (
-                  <div className="absolute top-4 right-4 bg-success/20 text-success text-[10px] font-black uppercase px-2 py-1 rounded-full">Active</div>
+                  <div className="absolute top-4 right-4 bg-success/20 text-success text-[10px] font-black uppercase px-2 py-1 rounded-full animate-pulse-glow">Active</div>
                 )}
                 <div className="mb-6">
                   <h3 className="text-xl font-black mb-1">{name}</h3>
@@ -96,7 +96,7 @@ const Shop: React.FC = () => {
                     {name.toLowerCase() === 'free' ? (
                       <>Free</>
                     ) : (
-                      <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-indigo-400">Premium</span>
+                      <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-400">Premium</span>
                     )}
                   </div>
                 </div>
@@ -129,7 +129,7 @@ const Shop: React.FC = () => {
                     href="https://discord.gg/2BBdxeKx"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className={`w-full py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] text-center transition-all block ${customer?.plan === name ? 'bg-white/5 text-muted pointer-events-none' : 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:scale-[1.02] hover:shadow-[0_0_15px_rgba(139,92,246,0.4)] active:scale-95'}`}
+                    className={`w-full py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] text-center transition-all block ${customer?.plan === name ? 'bg-white/5 text-muted pointer-events-none' : 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white hover:scale-[1.02] hover:shadow-[0_0_15px_rgba(16,185,129,0.4)] active:scale-95'}`}
                   >
                     {customer?.plan === name ? 'Current Plan' : 'Purchase Premium'}
                   </a>
@@ -141,8 +141,8 @@ const Shop: React.FC = () => {
           )}
         </div>
 
-        <div className="mt-20 bg-surface border border-border p-10 rounded-[40px] text-center max-w-3xl mx-auto shadow-2xl relative overflow-hidden group">
-          <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+        <div className="mt-20 bg-surface border border-border p-10 rounded-[40px] text-center max-w-3xl mx-auto shadow-2xl relative overflow-hidden group hover-glow-card">
+          <div className="absolute inset-0 bg-gradient-to-r from-teal-500/10 to-emerald-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-700 animate-gradient-x" />
           <h2 className="text-2xl font-black mb-4 uppercase tracking-tight relative z-10">Purchase & Support</h2>
           <p className="text-muted mb-8 text-sm leading-relaxed font-bold relative z-10">Please join our Discord server to purchase premium plans, ask questions, or get direct support from our team.</p>
           <a href="https://discord.gg/2BBdxeKx" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-3 bg-white text-black px-10 py-4 rounded-full font-black uppercase tracking-widest text-xs hover:scale-105 transition-all shadow-xl shadow-white/5 relative z-10">
