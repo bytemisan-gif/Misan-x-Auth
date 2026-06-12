@@ -1,0 +1,50 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "resellers": {
+      ".read": "auth != null",
+      "$hash": {
+        ".write": "auth != null && auth.token.email === 'bytemisan@gmail.com'"
+      }
+    },
+
+    "applications": {
+      "$secret": {
+        ".read": "auth != null && root.child('customers').child(auth.token.email.replace('.', ',')).child('secret').val() === $secret",
+        ".write": "auth != null && root.child('customers').child(auth.token.email.replace('.', ',')).child('secret').val() === $secret"
+      }
+    },
+
+    "webhookSettings": {
+      "$secret": {
+        ".read": "auth != null && auth.token.email === 'bytemisan@gmail.com'",
+        ".write": "auth != null && auth.token.email === 'bytemisan@gmail.com'"
+      }
+    },
+
+    "customers": {
+      ".read": "auth != null && auth.token.email === 'bytemisan@gmail.com'",
+      "$emailKey": {
+        ".read": "auth != null && auth.token.email.replace('.', ',') === $emailKey",
+        ".write": "auth != null && (auth.token.email.replace('.', ',') === $emailKey || auth.token.email === 'bytemisan@gmail.com')"
+      }
+    },
+
+    "system": {
+      "stats": {
+        ".read": true,
+        ".write": "auth != null && auth.token.email === 'bytemisan@gmail.com'"
+      },
+      "plans": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.token.email === 'bytemisan@gmail.com'"
+      },
+      "config": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.token.email === 'bytemisan@gmail.com'"
+      }
+    }
+  }
+}
